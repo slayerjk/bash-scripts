@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+
+#################################################
+#EDIT THIS SECTION
+#################################################
+
+#Defining PATH for commands
+export PATH=$PATH:/usr/bin
+
+#Logging
+LOG_DIR=/var/log/backup-script-log/
+LOG_NAME=files-backup-`date +%F`.log
+exec 1>>$LOG_DIR/$LOG_NAME 2>&1
+
+#Inserting date in log
+echo `date`
+
+#(Re)Mount NFS dir, edit your storage details
+STORAGE_IP=111.111.111.111
+STORAGE_NFS_DIR=nfs-backup
+#Backups dir root path and NFS storage mount point
+ROOT_BACKUP_DIR=/mnt/share-nfs-backups
+#No need to edit this part
+if `mount -t nfs $STORAGE_IP:/$STORAGE_NFS_DIR $ROOT_BACKUP_DIR`; then
+  echo "Mounting NFS is ok!"
+else
+  echo "Mounting NFS was failed, abort execution!"
+  exit 1
+fi
+
+#Define current date backup dir
+CURRENT_DATE_BACKUP_DIR=`date +%F`
+
+#DB data
+DB_NAME=mydb
+DB_USER=root
+DB_PASSWORD="password"
+#Gzip using - yes/no
+USE_GZIP="yes"
+DB_DUMP_FILE=$DB_NAME-`date +%F`.sql
+DB_DUMP_FILE_GZIP=$DB_NAME-`date +%F`.sql.gz
+
+#File dir
+SITE_DIR=/var/www/html/site
+#TAR filename for site archive
+TAR_ARCHIVE_NAME=files-backup_`date +%F`.tar.gz
+
+#DoM is Day of Month
+DoM=`date +%d`
+#DoW is Day of Week
+DoW=`date +%u`
+
+#Define Number of backup files for each type of backup
+NUMBER_OF_MONTHLY_BACKUPS=3
+NUMBER_OF_WEEKLY_BACKUPS=4
+NUMBER_OF_DAILY_BACKUPS=7
+
+#################################################
+#NO NEED TO EDIT FURTHER
+##################################################
+
+#Function for backup rotation - keep only N files
+function backup-rotation () {
+  if [ $# -ne 2 ]; then
+    echo "Something wrong with parameters in backup-rotation functions."
+    echo "There must be only 2 params: 1)num. of files to keep; 2)path of backup files."
+    exit
+  fi
+  NUMBER_OF_FILES_TO_KEEP=$1
+  PATH_OF_BACKUPS=$2
+  COUNTER=1
+  for i in `ls -t $PATH_OF_BACKUPS`
+  do
+    if [ $COUNTER -le $NUMBER_OF_FILES_TO_KEEP ]; then
+       ((COUNTER++))
+       continue
+    fi
+    echo "Deleting old file - $i - in backup dir..."
+    rm -vrf $PATH_OF_BACKUPS/$i
+  done
+}
+
+#Function for NO GZIP/GZIP using
+function using-gzip () {
+  if [[ "$USE_GZIP" == "yes" ]]; then
+    echo "Using GZIP..."
+    mysqldump -u $DB_USER -p$DB_PASSWORD $DB_NAME | gzip > $CURRENT_DATE_BACKUP_PATH/$DB_DUMP_FILE_GZIP
+  else
+    echo "No GZIP using..."
+    mysqldump -u $DB_USER -p$DB_PASSWORD $DB_NAME > $CURRENT_DATE_BACKUP_PATH/$DB_DUMP_FILE
+  fi
+}
+
+#Monthly backup
+if [ $DoM -eq 01 ]; then
+    echo "Making Monthly backup..."
+
+    #Create current date backup dir
+    echo "Creating Monthly backup dir..."
+    mkdir -p $ROOT_BACKUP_DIR/monthly/$CURRENT_DATE_BACKUP_DIR
+    CURRENT_DATE_BACKUP_PATH=$ROOT_BACKUP_DIR/monthly/$CURRENT_DATE_BACKUP_DIR
+    BACKUP_PATH_MONTHLY=$ROOT_BACKUP_DIR/monthly
+
+    #DB backup
+    echo "Making Monthly mysqldump..."
+    using-gzip
+
+    #Make tar archive of files dir(using tar)
+    echo "Making Monthly archive of wp-site files..."
+    tar -zcf $CURRENT_DATE_BACKUP_PATH/$TAR_ARCHIVE_NAME $SITE_DIR
+
+    #Delete old files(keep only $NUMBER_OF_MONTHLY_BACKUPS recent files)
+    echo "Backup files rotation processing:"
+    backup-rotation $NUMBER_OF_MONTHLY_BACKUPS $BACKUP_PATH_MONTHLY
+
+#Weekly backup on Monday(except Monthly)
+elif [ $DoW -eq  1 ]; then
+    echo "Making Weekly backup..."
+
+    #Create current date backup dir
+    echo "Creating Weekly backup dir..."
+    mkdir -p $ROOT_BACKUP_DIR/weekly/$CURRENT_DATE_BACKUP_DIR
+    CURRENT_DATE_BACKUP_PATH=$ROOT_BACKUP_DIR/weekly/$CURRENT_DATE_BACKUP_DIR
+    BACKUP_PATH_WEEKLY=$ROOT_BACKUP_DIR/weekly/
+
+    #DB backup
+    echo "Making Weekly mysqldump..."
+    using-gzip
+
+    #Make tar archive of files dir(using tar)
+    echo "Making Weekly archive of wp-site files..."
+    tar -zcf $CURRENT_DATE_BACKUP_PATH/$TAR_ARCHIVE_NAME $SITE_DIR
+
+    #Delete old files(keep only $NUMBER_OF_WEEKLY_BACKUPS recent files)
+    echo "Backup files rotation processing:"
+    backup-rotation $NUMBER_OF_WEEKLY_BACKUPS $BACKUP_PATH_WEEKLY
+
+#Daily backup(except Monthly and Weekly)
+else
+  echo "Making Daily backup..."
+
+  #Create current date backup dir
+  echo "Creating Daily backup dir..."
+  #mkdir -p $ROOT_BACKUP_DIR/daily/$CURRENT_DATE_BACKUP_DIR
+  mkdir -p $ROOT_BACKUP_DIR/daily/$CURRENT_DATE_BACKUP_DIR
+  CURRENT_DATE_BACKUP_PATH=$ROOT_BACKUP_DIR/daily/$CURRENT_DATE_BACKUP_DIR
+  BACKUP_PATH_DAILY=$ROOT_BACKUP_DIR/daily/
+
+  #DB backup
+  echo "Making Daily mysqldump..."
+  using-gzip
+
+  #Make tar archive of files dir(using tar)
+  echo "Making Daily archive of wp-site files..."
+  tar -zcf $CURRENT_DATE_BACKUP_PATH/$TAR_ARCHIVE_NAME $SITE_DIR
+
+  #Delete old files(keep only $NUMBER_OF_DAILY_BACKUPS recent files)
+  echo "Backup files rotation processing:"
+  backup-rotation $NUMBER_OF_DAILY_BACKUPS $BACKUP_PATH_DAILY
+
+fi
+echo "Backup done!"
