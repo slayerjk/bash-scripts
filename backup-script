@@ -9,10 +9,13 @@ export PATH=$PATH:/usr/bin
 
 #Logging
 LOG_DIR=/var/log/backup-script-log/
-LOG_NAME=files-backup-`date +%F`.log
+#LOG_NAME=backup-log.log
+LOG_NAME=backup-log-`date +%F`.log
 exec 1>>$LOG_DIR/$LOG_NAME 2>&1
 
 #Inserting date in log
+echo "##################"
+echo "Starting new backup!"
 echo `date`
 
 #(Re)Mount NFS dir, edit your storage details
@@ -25,6 +28,7 @@ if `mount -t nfs $STORAGE_IP:/$STORAGE_NFS_DIR $ROOT_BACKUP_DIR`; then
   echo "Mounting NFS is ok!"
 else
   echo "Mounting NFS was failed, abort execution!"
+  echo "Backup Fail!"
   exit 1
 fi
 
@@ -80,7 +84,7 @@ function backup-rotation () {
   done
 }
 
-#Function for NO GZIP/GZIP using
+#Function for GZIP/NO GZIP using
 function using-gzip () {
   if [[ "$USE_GZIP" == "yes" ]]; then
     echo "Using GZIP..."
@@ -103,15 +107,33 @@ if [ $DoM -eq 01 ]; then
 
     #DB backup
     echo "Making Monthly mysqldump..."
-    using-gzip
+    if `using-gzip`; then
+        echo "Monthly: Using Tar Gzip done!"
+    else
+        echo "Monthly: Using Tar Gzip Fail!"
+        echo "Backup Fail!"
+        exit 1
+    fi
 
     #Make tar archive of files dir(using tar)
     echo "Making Monthly archive of wp-site files..."
-    tar -zcf $CURRENT_DATE_BACKUP_PATH/$TAR_ARCHIVE_NAME $SITE_DIR
+    fi `tar -zcf $CURRENT_DATE_BACKUP_PATH/$TAR_ARCHIVE_NAME $SITE_DIR`; 
+        echo "Montly: Using Tar No-Gzip done!"
+    else
+        echo "Monthly: Using Tar No-Gzip Fail!"
+        echo "Backup Fail!"
+        exit 1
+    fi
 
     #Delete old files(keep only $NUMBER_OF_MONTHLY_BACKUPS recent files)
     echo "Backup files rotation processing:"
-    backup-rotation $NUMBER_OF_MONTHLY_BACKUPS $BACKUP_PATH_MONTHLY
+    if `backup-rotation $NUMBER_OF_MONTHLY_BACKUPS $BACKUP_PATH_MONTHLY`; then
+        echo "Montly: Rotation done!"
+    else
+        echo "Monthly: Rotation Fail!"
+        echo "Backup Fail!"
+        exit 1
+    fi
 
 #Weekly backup on Monday(except Monthly)
 elif [ $DoW -eq  1 ]; then
@@ -125,15 +147,33 @@ elif [ $DoW -eq  1 ]; then
 
     #DB backup
     echo "Making Weekly mysqldump..."
-    using-gzip
+    if `using-gzip`; then
+        echo "Weekly: Using Tar Gzip done!"
+    else
+        echo "Weekly: Using Tar Gzip Fail!"
+        echo "Backup Fail!"
+        exit 1
+    fi
 
     #Make tar archive of files dir(using tar)
     echo "Making Weekly archive of wp-site files..."
-    tar -zcf $CURRENT_DATE_BACKUP_PATH/$TAR_ARCHIVE_NAME $SITE_DIR
+    if `tar -zcf $CURRENT_DATE_BACKUP_PATH/$TAR_ARCHIVE_NAME $SITE_DIR`; then
+        echo "Weekly: Using Tar No-Gzip done!"
+    else
+        echo "Weekly: Using Tar No-Gzip Fail!"
+        echo "Backup Fail!"
+        exit 1
+    fi
 
     #Delete old files(keep only $NUMBER_OF_WEEKLY_BACKUPS recent files)
     echo "Backup files rotation processing:"
-    backup-rotation $NUMBER_OF_WEEKLY_BACKUPS $BACKUP_PATH_WEEKLY
+    if `backup-rotation $NUMBER_OF_WEEKLY_BACKUPS $BACKUP_PATH_WEEKLY`; then
+        echo "Weekly: Rotation done!"
+    else
+        echo "Weekly: Rotation Fail!"
+        echo "Backup Fail!"
+        exit 1
+    fi
 
 #Daily backup(except Monthly and Weekly)
 else
@@ -148,15 +188,34 @@ else
 
   #DB backup
   echo "Making Daily mysqldump..."
-  using-gzip
+  if `using-gzip`; then
+      echo "Daily: Using Tar Gzip done!"
+  else
+      echo "Weekly: Using Tar Gzip Fail!"
+      echo "Backup Fail!"
+      exit 1
+  fi
 
   #Make tar archive of files dir(using tar)
   echo "Making Daily archive of wp-site files..."
-  tar -zcf $CURRENT_DATE_BACKUP_PATH/$TAR_ARCHIVE_NAME $SITE_DIR
+  if `tar -zcf $CURRENT_DATE_BACKUP_PATH/$TAR_ARCHIVE_NAME $SITE_DIR`; then
+      echo "Daily: Using Tar No-Gzip done!"
+  else
+      echo "Daily: Using Tar No-Gzip Fail!"
+      echo "Backup Fail!"
+      exit 1
+  fi
 
   #Delete old files(keep only $NUMBER_OF_DAILY_BACKUPS recent files)
   echo "Backup files rotation processing:"
-  backup-rotation $NUMBER_OF_DAILY_BACKUPS $BACKUP_PATH_DAILY
+  if `backup-rotation $NUMBER_OF_DAILY_BACKUPS $BACKUP_PATH_DAILY`; then
+      echo "Daily: Rotation done!"
+  else
+      echo "Daily: Rotation Fail!"
+      echo "Backup Fail!"
+      exit 1
+  fi
 
 fi
-echo "Backup done!"
+echo "Backup Ok!"
+echo "##################"
