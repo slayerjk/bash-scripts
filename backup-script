@@ -107,20 +107,20 @@ if [ $DoM -eq 01 ]; then
 
     #DB backup
     echo "Making Monthly mysqldump..."
-    if `using-gzip`; then
-        echo "Monthly: Using Tar Gzip done!"
+    if using-gzip; then
+        echo "Monthly: SQL dump done!"
     else
-        echo "Monthly: Using Tar Gzip Fail!"
+        echo "Monthly: SQL dump Fail!"
         echo "Backup Fail!"
         exit 1
     fi
 
     #Make tar archive of files dir(using tar)
-    echo "Making Monthly archive of wp-site files..."
+    echo "Making Monthly Tar archive of files..."
     fi `tar -zcf $CURRENT_DATE_BACKUP_PATH/$TAR_ARCHIVE_NAME $SITE_DIR`; 
-        echo "Montly: Using Tar No-Gzip done!"
+        echo "Montly: Files backup done!"
     else
-        echo "Monthly: Using Tar No-Gzip Fail!"
+        echo "Monthly: Files backup Fail!"
         echo "Backup Fail!"
         exit 1
     fi
@@ -147,20 +147,20 @@ elif [ $DoW -eq  1 ]; then
 
     #DB backup
     echo "Making Weekly mysqldump..."
-    if `using-gzip`; then
-        echo "Weekly: Using Tar Gzip done!"
+    if using-gzip; then
+        echo "Weekly: SQL dump done!"
     else
-        echo "Weekly: Using Tar Gzip Fail!"
+        echo "Weekly: SQL dump Fail!"
         echo "Backup Fail!"
         exit 1
     fi
 
     #Make tar archive of files dir(using tar)
-    echo "Making Weekly archive of wp-site files..."
+    echo "Making Weekly Tar archive of files..."
     if `tar -zcf $CURRENT_DATE_BACKUP_PATH/$TAR_ARCHIVE_NAME $SITE_DIR`; then
-        echo "Weekly: Using Tar No-Gzip done!"
+        echo "Weekly: Files backup done!"
     else
-        echo "Weekly: Using Tar No-Gzip Fail!"
+        echo "Weekly: Files backup Fail!"
         echo "Backup Fail!"
         exit 1
     fi
@@ -188,20 +188,20 @@ else
 
   #DB backup
   echo "Making Daily mysqldump..."
-  if `using-gzip`; then
-      echo "Daily: Using Tar Gzip done!"
+  if using-gzip; then
+      echo "Daily: SQL dump done!"
   else
-      echo "Weekly: Using Tar Gzip Fail!"
+      echo "Weekly: SQL dump Fail!"
       echo "Backup Fail!"
       exit 1
   fi
 
   #Make tar archive of files dir(using tar)
-  echo "Making Daily archive of wp-site files..."
+  echo "Making Daily Tar archive of files..."
   if `tar -zcf $CURRENT_DATE_BACKUP_PATH/$TAR_ARCHIVE_NAME $SITE_DIR`; then
-      echo "Daily: Using Tar No-Gzip done!"
+      echo "Daily: Files backup done!"
   else
-      echo "Daily: Using Tar No-Gzip Fail!"
+      echo "Daily: Files backup Fail!"
       echo "Backup Fail!"
       exit 1
   fi
