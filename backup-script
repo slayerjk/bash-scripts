@@ -4,6 +4,8 @@
 #EDIT THIS SECTION
 #################################################
 
+#CHECK FOR NO TRAILING "/" IN THE PATHES!
+
 #Defining PATH for commands
 export PATH=$PATH:/usr/bin
 
@@ -127,14 +129,9 @@ if [ $DoM -eq 01 ]; then
 
     #Delete old files(keep only $NUMBER_OF_MONTHLY_BACKUPS recent files)
     echo "Backup files rotation processing:"
-    if `backup-rotation $NUMBER_OF_MONTHLY_BACKUPS $BACKUP_PATH_MONTHLY`; then
-        echo "Montly: Rotation done!"
-    else
-        echo "Monthly: Rotation Fail!"
-        echo "Backup Fail!"
-        exit 1
-    fi
-
+    backup-rotation $NUMBER_OF_MONTHLY_BACKUPS $BACKUP_PATH_MONTHLY
+    echo "Montly: Rotation done!"
+    
 #Weekly backup on Monday(except Monthly)
 elif [ $DoW -eq  1 ]; then
     echo "Making Weekly backup..."
@@ -143,7 +140,7 @@ elif [ $DoW -eq  1 ]; then
     echo "Creating Weekly backup dir..."
     mkdir -p $ROOT_BACKUP_DIR/weekly/$CURRENT_DATE_BACKUP_DIR
     CURRENT_DATE_BACKUP_PATH=$ROOT_BACKUP_DIR/weekly/$CURRENT_DATE_BACKUP_DIR
-    BACKUP_PATH_WEEKLY=$ROOT_BACKUP_DIR/weekly/
+    BACKUP_PATH_WEEKLY=$ROOT_BACKUP_DIR/weekly
 
     #DB backup
     echo "Making Weekly mysqldump..."
@@ -167,14 +164,9 @@ elif [ $DoW -eq  1 ]; then
 
     #Delete old files(keep only $NUMBER_OF_WEEKLY_BACKUPS recent files)
     echo "Backup files rotation processing:"
-    if `backup-rotation $NUMBER_OF_WEEKLY_BACKUPS $BACKUP_PATH_WEEKLY`; then
-        echo "Weekly: Rotation done!"
-    else
-        echo "Weekly: Rotation Fail!"
-        echo "Backup Fail!"
-        exit 1
-    fi
-
+    backup-rotation $NUMBER_OF_WEEKLY_BACKUPS $BACKUP_PATH_WEEKLY
+    echo "Weekly: Rotation done!"
+    
 #Daily backup(except Monthly and Weekly)
 else
   echo "Making Daily backup..."
@@ -184,7 +176,7 @@ else
   #mkdir -p $ROOT_BACKUP_DIR/daily/$CURRENT_DATE_BACKUP_DIR
   mkdir -p $ROOT_BACKUP_DIR/daily/$CURRENT_DATE_BACKUP_DIR
   CURRENT_DATE_BACKUP_PATH=$ROOT_BACKUP_DIR/daily/$CURRENT_DATE_BACKUP_DIR
-  BACKUP_PATH_DAILY=$ROOT_BACKUP_DIR/daily/
+  BACKUP_PATH_DAILY=$ROOT_BACKUP_DIR/daily
 
   #DB backup
   echo "Making Daily mysqldump..."
@@ -208,13 +200,8 @@ else
 
   #Delete old files(keep only $NUMBER_OF_DAILY_BACKUPS recent files)
   echo "Backup files rotation processing:"
-  if `backup-rotation $NUMBER_OF_DAILY_BACKUPS $BACKUP_PATH_DAILY`; then
-      echo "Daily: Rotation done!"
-  else
-      echo "Daily: Rotation Fail!"
-      echo "Backup Fail!"
-      exit 1
-  fi
+  backup-rotation $NUMBER_OF_DAILY_BACKUPS $BACKUP_PATH_DAILY
+  echo "Daily: Rotation done!"
 
 fi
 
@@ -222,4 +209,3 @@ echo "Unmounting NFS..."
 umount $ROOT_BACKUP_DIR
 
 echo "Backup Ok!"
-echo "##################"
