@@ -11,8 +11,8 @@ export PATH=$PATH:/usr/bin
 
 #Logging(LOG_DIR must exists)
 LOG_DIR=/var/log
-#LOG_NAME=backup-log.log
-LOG_NAME=backup-log-`date +%F`.log
+#LOG_NAME=backup-script.log
+LOG_NAME=backup-script_`date +%F`.log
 exec 1>>$LOG_DIR/$LOG_NAME 2>&1
 
 #Inserting date in log
@@ -46,7 +46,8 @@ USE_GZIP="yes"
 DB_DUMP_FILE=$DB_NAME-`date +%F`.sql
 DB_DUMP_FILE_GZIP=$DB_NAME-`date +%F`.sql.gz
 
-#File dir
+#File dir(s)
+#For several dir use form with quotes <FILE_DIR="/dir1 /dir2">
 FILE_DIR=/var/www/html/site
 #TAR filename for site archive
 TAR_ARCHIVE_NAME=files-backup_`date +%F`.tar.gz
