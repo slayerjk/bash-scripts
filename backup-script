@@ -47,7 +47,7 @@ DB_DUMP_FILE=$DB_NAME-`date +%F`.sql
 DB_DUMP_FILE_GZIP=$DB_NAME-`date +%F`.sql.gz
 
 #File dir(s)
-#For several dir use form with quotes <FILE_DIR="/dir1 /dir2">
+#For several dirs use form with quotes: FILE_DIR="/dir1 /dir2"
 FILE_DIR=/var/www/html/site
 #TAR filename for site archive
 TAR_ARCHIVE_NAME=files-backup_`date +%F`.tar.gz
@@ -120,7 +120,7 @@ if [ $DoM -eq 01 ]; then
 
     #Make tar archive of files dir(using tar)
     echo "Making Monthly Tar archive of files..."
-    if `tar -zcf $CURRENT_DATE_BACKUP_PATH/$TAR_ARCHIVE_NAME $FILE_DIR`; 
+    if `tar -zcf $CURRENT_DATE_BACKUP_PATH/$TAR_ARCHIVE_NAME $FILE_DIR`; then
         echo "Monthly: Files backup done!"
     else
         echo "Monthly: Files backup Fail!"
@@ -174,7 +174,6 @@ else
 
   #Create current date backup dir
   echo "Creating Daily backup dir..."
-  #mkdir -p $ROOT_BACKUP_DIR/daily/$CURRENT_DATE_BACKUP_DIR
   mkdir -p $ROOT_BACKUP_DIR/daily/$CURRENT_DATE_BACKUP_DIR
   CURRENT_DATE_BACKUP_PATH=$ROOT_BACKUP_DIR/daily/$CURRENT_DATE_BACKUP_DIR
   BACKUP_PATH_DAILY=$ROOT_BACKUP_DIR/daily
