@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+
+#Defining PATH for commands
+export PATH=$PATH:/usr/bin
+
+#########################
+# Edit this section
+#########################
+
+# Reporting variables
+REPORTS_ROOT=/home/marchenm/scripts/reports
+REPORT_NAME=report_$(hostname)_card-num-lookup_$(date +%F).log
+
+# Location for Card numbers lookup
+LOOKUP_LOCATIONS="/"
+EXCLUDE_LOCATIONS=(-not -path '/boot/*' -not -path '/proc/*' -not -path '/bin/*' -not -path '/sbin/*' -not -path '/mnt/*' -not -path '/lib/*' -not -path     '/lib64/*' -not -path '/tmp/*' -not -path '/sys/*' -not -path '/dev/*' -not -path '/run/*' -not -path '/usr/lib/*' -not -path '/usr/lib64/*' -not -path '/var/lib/*')
+
+# Card number lookup variables(Visa & Master Card)
+REGEXP="[45][0-9]{3}(-|\s)[0-9]{4}(-|\s)[0-9]{4}(-|\s)[0-9]{4}"
+
+######################
+# Don't edit further
+######################
+
+# Counters for lookups
+#count_visa=0
+#count_mc=0
+COUNT_TOTAL=0
+START_TIME=$SECONDS
+
+# Making report dir:
+CURRENT_DATE=$(hostname)_$(date +%F)
+mkdir -p "$REPORTS_ROOT"/"$CURRENT_DATE"
+CURRENT_DATE_REPORT_DIR="$REPORTS_ROOT"/"$CURRENT_DATE"
+exec 1>>"$CURRENT_DATE_REPORT_DIR"/"$REPORT_NAME" 2>&1
+
+#Inserting details in report:
+echo "#################################"
+echo "Starting new Card numbers lookup!"
+echo "Computer name is -  $(hostname)"
+echo "Computer ip is - $(hostname -I)"
+echo "Date is - $(date)"
+echo "#################################"
+echo ""
+
+# Lookup for Visa/MasterCard
+while read -r file
+do
+        var=$(grep -noEI "$REGEXP" "$file")
+        if [ -n "$var" ]
+        then
+                echo "$file"
+                echo "$var"
+                ((COUNT_TOTAL++))
+                cp "$file" "$CURRENT_DATE_REPORT_DIR"
+                echo ""
+        else
+                continue
+        fi
+done < <(find "$LOOKUP_LOCATIONS" -not -path "$REPORTS_ROOT/*" "${EXCLUDE_LOCATIONS[@]}" -type f)
+
+# Calculating number of files with Card numbers:
+if [[ "$COUNT_TOTAL" -eq 0 ]]
+then
+        echo "Card Numbers hasn't been found!"
+else
+        echo "Card Numbers was found in $COUNT_TOTAL files!"
+fi
+
+ELAPSED_TIME=$((SECONDS - START_TIME))
+echo ""
+echo "End of Card number lookup!"
+echo "Elapsed time is - $ELAPSED_TIME seconds"
+echo "################################"
