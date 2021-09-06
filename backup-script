@@ -6,6 +6,9 @@
 
 #CHECK FOR NO TRAILING "/" IN THE PATHES!
 
+# Setting Start time counter(seconds):
+START_TIME=$SECONDS
+
 #Defining PATH for commands
 export PATH=$PATH:/usr/bin
 
@@ -211,3 +214,6 @@ echo "Unmounting NFS..."
 umount $ROOT_BACKUP_DIR
 
 echo "Backup Ok!"
+ELAPSED_TIME=$((SECONDS - START_TIME))
+echo "Elapsed time is - $ELAPSED_TIME seconds"
+echo "################################"
