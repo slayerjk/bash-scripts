@@ -12,13 +12,13 @@ export PATH=$PATH:/usr/bin
 #Logging(LOG_DIR must exists)
 LOG_DIR=/var/log
 #LOG_NAME=backup-script.log
-LOG_NAME=backup-script_`date +%F`.log
-exec 1>>$LOG_DIR/$LOG_NAME 2>&1
+LOG_NAME=backup-script_$(date +%F).log
+exec 1>>"$LOG_DIR/$LOG_NAME" 2>&1
 
 #Inserting date in log
 echo "##################"
 echo "Starting new backup!"
-echo `date`
+date
 
 #(Re)Mount NFS dir, edit your storage details
 STORAGE_IP=111.111.111.111
@@ -26,7 +26,7 @@ STORAGE_NFS_DIR=nfs-backup
 #Backups dir root path and NFS storage mount point
 ROOT_BACKUP_DIR=/mnt/share-nfs-backups
 #No need to edit this part
-if `mount -t nfs $STORAGE_IP:/$STORAGE_NFS_DIR $ROOT_BACKUP_DIR`; then
+if mount -t nfs $STORAGE_IP:/$STORAGE_NFS_DIR $ROOT_BACKUP_DIR; then
   echo "Mounting NFS is ok!"
 else
   echo "Mounting NFS was failed, abort execution!"
@@ -35,7 +35,7 @@ else
 fi
 
 #Define current date backup dir
-CURRENT_DATE_BACKUP_DIR=`date +%F`
+CURRENT_DATE_BACKUP_DIR=$(date +%F)
 
 #DB data
 DB_NAME=mydb
@@ -43,19 +43,19 @@ DB_USER=root
 DB_PASSWORD="password"
 #Gzip using - yes/no
 USE_GZIP="yes"
-DB_DUMP_FILE=$DB_NAME-`date +%F`.sql
-DB_DUMP_FILE_GZIP=$DB_NAME-`date +%F`.sql.gz
+DB_DUMP_FILE=$DB_NAME-$(date +%F).sql
+DB_DUMP_FILE_GZIP=$DB_NAME-$(date +%F).sql.gz
 
 #File dir(s)
 #For several dirs use form with quotes: FILE_DIR="/dir1 /dir2"
 FILE_DIR=/var/www/html/site
 #TAR filename for site archive
-TAR_ARCHIVE_NAME=files-backup_`date +%F`.tar.gz
+TAR_ARCHIVE_NAME=files-backup_$(date +%F).tar.gz
 
 #DoM is Day of Month
-DoM=`date +%d`
+DoM=$(date +%d)
 #DoW is Day of Week
-DoW=`date +%u`
+DoW=$(date +%u)
 
 #Define Number of backup files for each type of backup
 NUMBER_OF_MONTHLY_BACKUPS=3
@@ -76,14 +76,16 @@ function backup-rotation () {
   NUMBER_OF_FILES_TO_KEEP=$1
   PATH_OF_BACKUPS=$2
   COUNTER=1
-  for i in `ls -t $PATH_OF_BACKUPS`
+    IFS=$'\n' # adding posibilty to see file with spaces in name
+  set -o noglob # adding posibilty to see file with spaces in name
+  for i in $(ls -t "$PATH_OF_BACKUPS")
   do
-    if [ $COUNTER -le $NUMBER_OF_FILES_TO_KEEP ]; then
+    if [ $COUNTER -le "$NUMBER_OF_FILES_TO_KEEP" ]; then
        ((COUNTER++))
        continue
     fi
     echo "Deleting old file - $i - in backup dir..."
-    rm -vrf $PATH_OF_BACKUPS/$i
+    rm -vrf "${PATH_OF_BACKUPS:?}"/"$i"
   done
 }
 
@@ -91,20 +93,20 @@ function backup-rotation () {
 function using-gzip () {
   if [[ "$USE_GZIP" == "yes" ]]; then
     echo "Using GZIP..."
-    mysqldump -u $DB_USER -p$DB_PASSWORD $DB_NAME | gzip > $CURRENT_DATE_BACKUP_PATH/$DB_DUMP_FILE_GZIP
+    mysqldump -u "$DB_USER" -p"$DB_PASSWORD $DB_NAME" | gzip > "$CURRENT_DATE_BACKUP_PATH"/"$DB_DUMP_FILE_GZIP"
   else
     echo "No GZIP using..."
-    mysqldump -u $DB_USER -p$DB_PASSWORD $DB_NAME > $CURRENT_DATE_BACKUP_PATH/$DB_DUMP_FILE
+    mysqldump -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" > "$CURRENT_DATE_BACKUP_PATH"/"$DB_DUMP_FILE"
   fi
 }
 
 #Monthly backup
-if [ $DoM -eq 01 ]; then
+if [ "$DoM" -eq 01 ]; then
     echo "Making Monthly backup..."
 
     #Create current date backup dir
     echo "Creating Monthly backup dir..."
-    mkdir -p $ROOT_BACKUP_DIR/monthly/$CURRENT_DATE_BACKUP_DIR
+    mkdir -p "$ROOT_BACKUP_DIR"/monthly/"$CURRENT_DATE_BACKUP_DIR"
     CURRENT_DATE_BACKUP_PATH=$ROOT_BACKUP_DIR/monthly/$CURRENT_DATE_BACKUP_DIR
     BACKUP_PATH_MONTHLY=$ROOT_BACKUP_DIR/monthly
 
@@ -120,7 +122,7 @@ if [ $DoM -eq 01 ]; then
 
     #Make tar archive of files dir(using tar)
     echo "Making Monthly Tar archive of files..."
-    if `tar -zcf $CURRENT_DATE_BACKUP_PATH/$TAR_ARCHIVE_NAME $FILE_DIR`; then
+    if tar -zcf "$CURRENT_DATE_BACKUP_PATH"/"$TAR_ARCHIVE_NAME" "$FILE_DIR"; then
         echo "Monthly: Files backup done!"
     else
         echo "Monthly: Files backup Fail!"
@@ -134,12 +136,12 @@ if [ $DoM -eq 01 ]; then
     echo "Montly: Rotation done!"
     
 #Weekly backup on Monday(except Monthly)
-elif [ $DoW -eq  1 ]; then
+elif [ "$DoW" -eq  1 ]; then
     echo "Making Weekly backup..."
 
     #Create current date backup dir
     echo "Creating Weekly backup dir..."
-    mkdir -p $ROOT_BACKUP_DIR/weekly/$CURRENT_DATE_BACKUP_DIR
+    mkdir -p "$ROOT_BACKUP_DIR"/weekly/"$CURRENT_DATE_BACKUP_DIR"
     CURRENT_DATE_BACKUP_PATH=$ROOT_BACKUP_DIR/weekly/$CURRENT_DATE_BACKUP_DIR
     BACKUP_PATH_WEEKLY=$ROOT_BACKUP_DIR/weekly
 
@@ -155,7 +157,7 @@ elif [ $DoW -eq  1 ]; then
 
     #Make tar archive of files dir(using tar)
     echo "Making Weekly Tar archive of files..."
-    if `tar -zcf $CURRENT_DATE_BACKUP_PATH/$TAR_ARCHIVE_NAME $FILE_DIR`; then
+    if tar -zcf "$CURRENT_DATE_BACKUP_PATH"/"$TAR_ARCHIVE_NAME" "$FILE_DIR"; then
         echo "Weekly: Files backup done!"
     else
         echo "Weekly: Files backup Fail!"
@@ -174,7 +176,7 @@ else
 
   #Create current date backup dir
   echo "Creating Daily backup dir..."
-  mkdir -p $ROOT_BACKUP_DIR/daily/$CURRENT_DATE_BACKUP_DIR
+  mkdir -p "$ROOT_BACKUP_DIR"/daily/"$CURRENT_DATE_BACKUP_DIR"
   CURRENT_DATE_BACKUP_PATH=$ROOT_BACKUP_DIR/daily/$CURRENT_DATE_BACKUP_DIR
   BACKUP_PATH_DAILY=$ROOT_BACKUP_DIR/daily
 
@@ -190,7 +192,7 @@ else
 
   #Make tar archive of files dir(using tar)
   echo "Making Daily Tar archive of files..."
-  if `tar -zcf $CURRENT_DATE_BACKUP_PATH/$TAR_ARCHIVE_NAME $FILE_DIR`; then
+  if tar -zcf "$CURRENT_DATE_BACKUP_PATH"/"$TAR_ARCHIVE_NAME" "$FILE_DIR"; then
       echo "Daily: Files backup done!"
   else
       echo "Daily: Files backup Fail!"
