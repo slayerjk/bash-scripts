@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
+# Setting Start time counter(seconds):
+START_TIME=$SECONDS
+
 #################################################
 #EDIT THIS SECTION
 #################################################
 
 #CHECK FOR NO TRAILING "/" IN THE PATHES!
-
-# Setting Start time counter(seconds):
-START_TIME=$SECONDS
 
 #Defining PATH for commands
 export PATH=$PATH:/usr/bin
@@ -17,11 +17,6 @@ LOG_DIR=/var/log
 #LOG_NAME=backup-script.log
 LOG_NAME=backup-script_$(date +%F).log
 exec 1>>"$LOG_DIR/$LOG_NAME" 2>&1
-
-#Inserting date in log
-echo "##################"
-echo "Starting new backup!"
-date
 
 #(Re)Mount NFS dir, edit your storage details
 STORAGE_IP=111.111.111.111
@@ -68,6 +63,11 @@ NUMBER_OF_DAILY_BACKUPS=7
 #################################################
 #NO NEED TO EDIT FURTHER
 ##################################################
+
+#Inserting date in log
+echo "##################"
+echo "Starting new backup!"
+date
 
 #Function for backup rotation - keep only N files
 function backup-rotation () {
