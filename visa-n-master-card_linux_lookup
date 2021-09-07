@@ -3,12 +3,15 @@
 #Defining PATH for commands
 export PATH=$PATH:/usr/bin
 
+# Starting to count script elapsed time
+START_TIME=$SECONDS
+
 #########################
 # Edit this section
 #########################
 
 # Reporting variables
-REPORTS_ROOT=/home/marchenm/scripts/reports
+REPORTS_HOME=/tmp
 REPORT_NAME=report_$(hostname)_card-num-lookup_$(date +%F).log
 
 # Location for Card numbers lookup
@@ -18,20 +21,11 @@ EXCLUDE_LOCATIONS=(-not -path '/boot/*' -not -path '/proc/*' -not -path '/bin/*'
 # Card number lookup variables(Visa & Master Card)
 REGEXP="[45][0-9]{3}(-|\s)[0-9]{4}(-|\s)[0-9]{4}(-|\s)[0-9]{4}"
 
-######################
-# Don't edit further
-######################
+#########################
+# No need to edit further
+#########################
 
-# Counters for lookups
-#count_visa=0
-#count_mc=0
-COUNT_TOTAL=0
-START_TIME=$SECONDS
-
-# Making report dir:
-CURRENT_DATE=$(hostname)_$(date +%F)
-mkdir -p "$REPORTS_ROOT"/"$CURRENT_DATE"
-CURRENT_DATE_REPORT_DIR="$REPORTS_ROOT"/"$CURRENT_DATE"
+# Write STDOUT and STDERR in report
 exec 1>>"$CURRENT_DATE_REPORT_DIR"/"$REPORT_NAME" 2>&1
 
 #Inserting details in report:
@@ -42,6 +36,22 @@ echo "Computer ip is - $(hostname -I)"
 echo "Date is - $(date)"
 echo "#################################"
 echo ""
+
+# Counters for lookups
+COUNT_TOTAL=0
+
+# Making report dir:
+if [ ! -d "$REPORTS_HOME"/cn-reports ]
+then
+        mkdir -p "$REPORTS_HOME"/cn-reports
+fi
+REPORTS_ROOT="$REPORTS_HOME"/cn-reports
+CURRENT_DATE=$(hostname)_$(date +%F)
+if [ ! -d "$REPORTS_ROOT"/"$CURRENT_DATE" ]
+then
+        mkdir -p "$REPORTS_ROOT"/"$CURRENT_DATE"
+fi
+CURRENT_DATE_REPORT_DIR="$REPORTS_ROOT"/"$CURRENT_DATE"
 
 # Lookup for Visa/MasterCard
 while read -r file
