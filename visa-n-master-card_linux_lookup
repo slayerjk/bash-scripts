@@ -11,12 +11,12 @@ START_TIME=$SECONDS
 #########################
 
 # Reporting variables
-REPORTS_HOME=/tmp
+REPORTS_MOUNT=/tmp
 REPORT_NAME=report_$(hostname)_card-num-lookup_$(date +%F).log
 
 # Location for Card numbers lookup
 LOOKUP_LOCATIONS="/"
-EXCLUDE_LOCATIONS=(-not -path '/boot/*' -not -path '/proc/*' -not -path '/bin/*' -not -path '/sbin/*' -not -path '/mnt/*' -not -path '/lib/*' -not -path     '/lib64/*' -not -path '/tmp/*' -not -path '/sys/*' -not -path '/dev/*' -not -path '/run/*' -not -path '/usr/lib/*' -not -path '/usr/lib64/*' -not -path '/var/lib/*')
+EXCLUDE_LOCATIONS=(-not -path '/boot/*' -not -path '/proc/*' -not -path '/bin/*' -not -path '/sbin/*' -not -path '/mnt/*' -not -path '/lib/*' -not -path '/lib64/*' -not -path '/tmp/*' -not -path '/sys/*' -not -path '/dev/*' -not -path '/run/*' -not -path '/usr/lib/*' -not -path '/usr/lib64/*' -not -path '/var/lib/*')
 
 # Card number lookup variables(Visa & Master Card)
 REGEXP="[45][0-9]{3}(-|\s)[0-9]{4}(-|\s)[0-9]{4}(-|\s)[0-9]{4}"
@@ -24,6 +24,35 @@ REGEXP="[45][0-9]{3}(-|\s)[0-9]{4}(-|\s)[0-9]{4}(-|\s)[0-9]{4}"
 #########################
 # No need to edit further
 #########################
+
+# Making report dir:
+if [ ! -d "$REPORTS_MOUNT"/cn-reports ]
+        then
+                #echo "REPORTS_ROOT doesn't exist, creating..."
+                mkdir -p "$REPORTS_MOUNT"/cn-reports
+#else
+        #echo "REPORTS_ROOT exists, skipping"
+fi
+
+REPORTS_ROOT="$REPORTS_MOUNT"/cn-reports
+CURRENT_DATE=$(hostname)_$(date +%F)
+
+if [ ! -d "$REPORTS_ROOT"/"$CURRENT_DATE" ]
+        then
+                mkdir -p "$REPORTS_ROOT"/"$CURRENT_DATE"
+#else
+        #echo "CURRENT_DATE_REPORT_DIR exists, skipping"
+fi
+
+CURRENT_DATE_REPORT_DIR="$REPORTS_ROOT"/"$CURRENT_DATE"
+
+# Making dir for evidence files
+if [ ! -d "$CURRENT_DATE_REPORT_DIR"/evidences ]
+        then
+                mkdir -p "$CURRENT_DATE_REPORT_DIR"/evidences
+fi
+
+EVIDENCES_DIR="$CURRENT_DATE_REPORT_DIR"/evidences
 
 # Write STDOUT and STDERR in report
 exec 1>>"$CURRENT_DATE_REPORT_DIR"/"$REPORT_NAME" 2>&1
@@ -40,19 +69,6 @@ echo ""
 # Counters for lookups
 COUNT_TOTAL=0
 
-# Making report dir:
-if [ ! -d "$REPORTS_HOME"/cn-reports ]
-then
-        mkdir -p "$REPORTS_HOME"/cn-reports
-fi
-REPORTS_ROOT="$REPORTS_HOME"/cn-reports
-CURRENT_DATE=$(hostname)_$(date +%F)
-if [ ! -d "$REPORTS_ROOT"/"$CURRENT_DATE" ]
-then
-        mkdir -p "$REPORTS_ROOT"/"$CURRENT_DATE"
-fi
-CURRENT_DATE_REPORT_DIR="$REPORTS_ROOT"/"$CURRENT_DATE"
-
 # Lookup for Visa/MasterCard
 while read -r file
 do
@@ -62,12 +78,12 @@ do
                 echo "$file"
                 echo "$var"
                 ((COUNT_TOTAL++))
-                cp "$file" "$CURRENT_DATE_REPORT_DIR"
+                cp "$file" "$EVIDENCES_DIR"
                 echo ""
         else
                 continue
         fi
-done < <(find "$LOOKUP_LOCATIONS" -not -path "$REPORTS_ROOT/*" "${EXCLUDE_LOCATIONS[@]}" -type f)
+done < <(find "$LOOKUP_LOCATIONS" -not -path "$REPORTS_MOUNT/*" -not -path '/tmp/cn-reports/*' "${EXCLUDE_LOCATIONS[@]}" -type f)
 
 # Calculating number of files with Card numbers:
 if [[ "$COUNT_TOTAL" -eq 0 ]]
