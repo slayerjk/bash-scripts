@@ -1,67 +1,107 @@
 #!/usr/bin/env bash
 
+### This is Visa/MasterCard card numbers lookup search script. ###
+
+### !!! For Solaris support "ggrep" util must be installed !!! ###
+### !!! Script must be runnig under ROOT privileges ###
+### !!! Remote share mount point must be in /etc/fstab(linux) / /etc/vfstab(solaris)
+
 #Defining PATH for commands
 export PATH=$PATH:/usr/bin
 
 # Starting to count script elapsed time
 START_TIME=$SECONDS
 
+# Checking OS name
+OS=$(uname -o)
+
 #########################
 # Edit this section
 #########################
 
-# Reporting variables
-REPORTS_MOUNT=/tmp
-REPORT_NAME=report_$(hostname)_card-num-lookup_$(date +%F).log
+# Mount point(local of fstab entry
+# If you're using remote share for reports choose "yes", otherwise "no"(use local) for REMOTE_SHARE
+REMOTE_SHARE="yes"
+# If REMOTE_SHARE="no", then you'll use LOCAL dir for reports
+# If there is no such dir, script will try to create it
+REPORTS_MOUNT="/atmddk"
+REPORT_NAME=report_$(hostname)_$(date +%F).log
 
 # Location for Card numbers lookup
 LOOKUP_LOCATIONS="/"
-EXCLUDE_LOCATIONS=(-not -path '/boot/*' -not -path '/proc/*' -not -path '/bin/*' -not -path '/sbin/*' -not -path '/mnt/*' -not -path '/lib/*' -not -path '/lib64/*' -not -path '/tmp/*' -not -path '/sys/*' -not -path '/dev/*' -not -path '/run/*' -not -path '/usr/lib/*' -not -path '/usr/lib64/*' -not -path '/var/lib/*')
+
+# Exclude locations to search for Solaris/Linux
+if [ "$OS" = "Solaris" ]
+then
+        # Solaris list
+        EXCLUDE_LOCATIONS=$(ls -bdi "$REPORTS_MOUNT" /boot /proc /bin /sbin /mnt /lib /dev /usr/lib /var/lib /platform /system /tmp | sed -e 's/ *\([0-9][0-9]*\) .*/-inum \1 -o/')
+else
+        # Linux list
+        EXCLUDE_LOCATIONS=(-not -path "$REPORTS_MOUNT/*" -not -path '/boot/*' -not -path '/proc/*' -not -path '/bin/*' -not -path '/sbin/*' -not -path '/mnt/*' -not -path '/lib/*' -not -path '/lib64/*' -not -path '/sys/*' -not -path '/dev/*' -not -path '/run/*' -not -path '/usr/lib/*' -not -path '/usr/lib64/*' -not -path '/var/lib/*' -not -path '/tmp/*')
+fi
 
 # Card number lookup variables(Visa & Master Card)
 REGEXP="[45][0-9]{3}(-|\s)[0-9]{4}(-|\s)[0-9]{4}(-|\s)[0-9]{4}"
 
-#########################
-# No need to edit further
-#########################
+#######################
+# DONT'T EDIT FURTHER #
+#######################
 
-# Making report dir:
-if [ ! -d "$REPORTS_MOUNT"/cn-reports ]
+# If using Local report storage
+if [ "$REMOTE_SHARE" = "no" ]
+then
+        if [ ! -d "$REPORTS_MOUNT" ]
         then
-                #echo "REPORTS_ROOT doesn't exist, creating..."
-                mkdir -p "$REPORTS_MOUNT"/cn-reports
-#else
-        #echo "REPORTS_ROOT exists, skipping"
+                mkdir -p "$REPORTS_MOUNT"
+        fi
 fi
 
-REPORTS_ROOT="$REPORTS_MOUNT"/cn-reports
+# If using REMOTE_SHARE for reports
+if [ "$REMOTE_SHARE" = "yes" ]
+then
+        if ! mount "$REPORTS_MOUNT"
+        then
+                echo "Mounting REMOTE_SHARE - FAILED!"
+                echo "SCRIPT FAILED! Terminating..."
+                echo ""
+                exit 1
+        fi
+fi
+
+# Making report dir:
+if [ ! -d "$REPORTS_MOUNT"/CN-Reports ]
+then
+        mkdir -p "$REPORTS_MOUNT"/CN-Reports
+fi
+
+REPORTS_ROOT="$REPORTS_MOUNT"/CN-Reports
 CURRENT_DATE=$(hostname)_$(date +%F)
 
 if [ ! -d "$REPORTS_ROOT"/"$CURRENT_DATE" ]
-        then
-                mkdir -p "$REPORTS_ROOT"/"$CURRENT_DATE"
-#else
-        #echo "CURRENT_DATE_REPORT_DIR exists, skipping"
+then
+        mkdir -p "$REPORTS_ROOT"/"$CURRENT_DATE"
 fi
 
 CURRENT_DATE_REPORT_DIR="$REPORTS_ROOT"/"$CURRENT_DATE"
 
-# Making dir for evidence files
-if [ ! -d "$CURRENT_DATE_REPORT_DIR"/evidences ]
-        then
-                mkdir -p "$CURRENT_DATE_REPORT_DIR"/evidences
-fi
-
-EVIDENCES_DIR="$CURRENT_DATE_REPORT_DIR"/evidences
-
-# Write STDOUT and STDERR in report
-exec 1>>"$CURRENT_DATE_REPORT_DIR"/"$REPORT_NAME" 2>&1
+# REPORT/DEBUG settings
+# Write STDOUT and STDERR in report; comment it for DEBUG!
+TEMP_REPORT=/tmp/"$REPORT_NAME"
+exec 1>>"$TEMP_REPORT" 2>&1
 
 #Inserting details in report:
 echo "#################################"
 echo "Starting new Card numbers lookup!"
 echo "Computer name is -  $(hostname)"
-echo "Computer ip is - $(hostname -I)"
+echo "Computer OS is - $OS"
+
+if [ "$OS" = "Solaris" ]
+then
+        echo "OS is Solaris"
+else
+        echo "Computer ip is - $(hostname -I)"
+fi
+
 echo "Date is - $(date)"
 echo "#################################"
 echo ""
@@ -70,27 +110,57 @@ echo ""
 COUNT_TOTAL=0
 
 # Lookup for Visa/MasterCard
-while read -r file
-do
-        var=$(grep -noEI "$REGEXP" "$file")
-        if [ -n "$var" ]
-        then
-                echo "$file"
-                echo "$var"
-                ((COUNT_TOTAL++))
-                cp "$file" "$EVIDENCES_DIR"
-                echo ""
-        else
-                continue
-        fi
-done < <(find "$LOOKUP_LOCATIONS" -not -path "$REPORTS_MOUNT/*" -not -path '/tmp/cn-reports/*' "${EXCLUDE_LOCATIONS[@]}" -type f)
+if [ "$OS" = "Solaris" ]
+then
+        while read -r file
+        do
+                var=$(ggrep -nosEI "$REGEXP" "$file")
+                if [ -n "$var" ]
+                then
+                        echo "$file"
+                        echo "$var"
+                        echo ""
+                        ((COUNT_TOTAL++))
+                        # Making dir for evidence files
+                        if [ ! -d "$CURRENT_DATE_REPORT_DIR"/evidences ]
+                        then
+                                mkdir -p "$CURRENT_DATE_REPORT_DIR"/evidences
+                        fi
+                        cp "$file" "$CURRENT_DATE_REPORT_DIR"/evidences
+                else
+                        continue
+                fi
+        done < <(find "$LOOKUP_LOCATIONS" \( $EXCLUDE_LOCATIONS -nouser -o -nogroup \) -prune -o -print -type f)
+else
+        while read -r file
+        do
+                var=$(grep -nosEI "$REGEXP" "$file")
+                if [ -n "$var" ]
+                then
+                        echo "$file"
+                        echo "$var"
+                        echo ""
+                        ((COUNT_TOTAL++))
+                        # Making dir for evidence files
+                        if [ ! -d "$CURRENT_DATE_REPORT_DIR"/evidences ]
+                        then
+                        mkdir -p "$CURRENT_DATE_REPORT_DIR"/evidences
+                        fi
+                        cp "$file" "$CURRENT_DATE_REPORT_DIR"/evidences
+                else
+                        continue
+                fi
+        done < <(find "$LOOKUP_LOCATIONS" "${EXCLUDE_LOCATIONS[@]}" -type f)
+fi
 
 # Calculating number of files with Card numbers:
 if [[ "$COUNT_TOTAL" -eq 0 ]]
 then
         echo "Card Numbers hasn't been found!"
+        echo ""
 else
         echo "Card Numbers was found in $COUNT_TOTAL files!"
+        echo ""
 fi
 
 ELAPSED_TIME=$((SECONDS - START_TIME))
@@ -98,3 +168,21 @@ echo ""
 echo "End of Card number lookup!"
 echo "Elapsed time is - $ELAPSED_TIME seconds"
 echo "################################"
+
+# Copy report from /tmp to "$CURRENT_DATE_REPORT_DIR"
+cp "$TEMP_REPORT" "$CURRENT_DATE_REPORT_DIR"
+
+# Unmount REPORT_SHARE
+if [ "$REMOTE_SHARE" = "yes" ]
+then
+        if umount "$REPORTS_MOUNT"
+        then
+                echo "Unmounting REMOTE_SHARE - OK!"
+                rm -rf "$REPORTS_ROOT"
+        else
+                echo "Unmountig REMOTE_SHAER - FAILED, check logs."
+                exit 0
+        fi
+fi
+
+rm "$TEMP_REPORT"
