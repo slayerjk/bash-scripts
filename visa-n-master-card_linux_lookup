@@ -47,13 +47,12 @@ REGEXP="[45][0-9]{3}(-|\s)[0-9]{4}(-|\s)[0-9]{4}(-|\s)[0-9]{4}"
 # DONT'T EDIT FURTHER #
 #######################
 
-# If using Local report storage
-if [ "$REMOTE_SHARE" = "no" ]
+# Exit if REMOTE_SHARE is neither "yes" nor "no"
+if [ "$REMOTE_SHARE" != "no" ] && [ "$REMOTE_SHARE" != "yes" ]
 then
-        if [ ! -d "$REPORTS_MOUNT" ]
-        then
-                mkdir -p "$REPORTS_MOUNT"
-        fi
+        echo "Wrong REMOTE_SHARE value. Terminating script..."
+        echo ""
+        exit 1
 fi
 
 # If using REMOTE_SHARE for reports
@@ -65,6 +64,15 @@ then
                 echo "SCRIPT FAILED! Terminating..."
                 echo ""
                 exit 1
+        fi
+fi
+
+# If using Local report storage
+if [ "$REMOTE_SHARE" = "no" ]
+then
+        if [ ! -d "$REPORTS_MOUNT" ]
+        then
+                mkdir -p "$REPORTS_MOUNT"
         fi
 fi
 
@@ -164,7 +172,6 @@ else
 fi
 
 ELAPSED_TIME=$((SECONDS - START_TIME))
-echo ""
 echo "End of Card number lookup!"
 echo "Elapsed time is - $ELAPSED_TIME seconds"
 echo "################################"
