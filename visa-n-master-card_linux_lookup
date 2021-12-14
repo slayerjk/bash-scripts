@@ -2,8 +2,9 @@
 
 ### This is Visa/MasterCard Card Sensitive Data lookup script. ###
 
-### !!! For Solaris support "ggrep" util must be installed !!! ###
 ### !!! This is BASH script, so BASH must be installed.
+### !!! For Solaris support "ggrep" util must be installed !!! ###
+### !!! For Solaris support "gfind" util must be installed !!! ###
 ### !!! Script must be runnig under ROOT privileges ###
 ### !!! Remote share mount point must be in /etc/fstab(linux) / /etc/vfstab(solaris)
 
@@ -34,10 +35,10 @@ LOOKUP_LOCATIONS="/"
 # Exclude locations to search for Solaris/Linux
 if [ "$OS" = "Solaris" ]; then
         # Solaris list
-        EXCLUDE_LOCATIONS=$(ls -bdi "$REPORTS_MOUNT" /boot /proc /bin /sbin /mnt /lib /dev /usr/lib /var/lib /platform /system /tmp | sed -e 's/ *\([0-9][0-9]*\) .*/-inum \1 -o/')
+        EXCLUDE_LOCATIONS_SOLARIS=(-not -path "$REPORTS_MOUNT/*" -not -path '/boot/*' -not -path '/proc/*' -not -path '/bin/*' -not -path '/sbin/*' -not -path '/mnt/*' -not -path '/lib/*' -not -path '/dev/*' -not -path '/usr/lib/*' -not -path '/var/lib/*' -not -path '/platform/*' -not -path '/system/*' -not -path '/tmp/*')
 else
         # Linux list
-        EXCLUDE_LOCATIONS=(-not -path "$REPORTS_MOUNT/*" -not -path '/boot/*' -not -path '/proc/*' -not -path '/bin/*' -not -path '/sbin/*' -not -path '/mnt/*' -not -path '/lib/*' -not -path '/lib64/*' -not -path '/sys/*' -not -path '/dev/*' -not -path '/run/*' -not -path '/usr/lib/*' -not -path '/usr/lib64/*' -not -path '/var/lib/*' -not -path '/tmp/*' -not -path '/var/ossec/queue/*')
+        EXCLUDE_LOCATIONS_LINUX=(-not -path "$REPORTS_MOUNT/*" -not -path '/boot/*' -not -path '/proc/*' -not -path '/bin/*' -not -path '/sbin/*' -not -path '/mnt/*' -not -path '/lib/*' -not -path '/lib64/*' -not -path '/sys/*' -not -path '/dev/*' -not -path '/run/*' -not -path '/usr/lib/*' -not -path '/usr/lib64/*' -not -path '/var/lib/*' -not -path '/tmp/*' -not -path '/var/ossec/queue/*')
 fi
 
 # Card number lookup variables(Visa & Master Card)
@@ -52,6 +53,7 @@ LOOKUP_OPTION="both"
 #######################
 # DONT'T EDIT FURTHER #
 #######################
+
 
 # If using Local report storage
 if [ "$REMOTE_SHARE" = "no" ]; then
@@ -93,7 +95,7 @@ exec 1>>"$TEMP_REPORT" 2>&1
 echo "#################################"
 echo "Starting new Card numbers lookup!"
 echo "Computer name is -  $(hostname)"
-echo "Computer OS is - $OS"
+echo "Computer OS type is - $OS"
 
 if [ "$OS" = "Solaris" ]; then
         echo "Computer IP is - $(ifconfig net0 | grep "inet" | awk '{print $2}')"
@@ -125,6 +127,8 @@ function card_data_lookup() {
 
         # Lookup for Visa/MasterCard
 
+        
+                
         if [ "$OS" = "Solaris" ]; then
                 while read -r file; do
                         var=$(ggrep -nosEI "$REGEXP" "$file")
@@ -137,11 +141,13 @@ function card_data_lookup() {
                                 if [ ! -d "$CURRENT_DATE_REPORT_DIR"/evidences ]; then
                                         mkdir -p "$CURRENT_DATE_REPORT_DIR"/evidences
                                 fi
-                                cp "$file" "$CURRENT_DATE_REPORT_DIR"/evidences
+                        cp "$file" "$CURRENT_DATE_REPORT_DIR"/evidences
                         else
                                 continue
                         fi
-                done < <(find "$LOOKUP_LOCATIONS" \( $EXCLUDE_LOCATIONS -nouser -o -nogroup \) -prune -o -print -type f)
+                done < <(gfind "$LOOKUP_LOCATIONS" "${EXCLUDE_LOCATIONS_SOLARIS[@]}" -type f)
+                
+                
         else
                 while read -r file; do
                         var=$(grep -nosEI "$REGEXP" "$file")
@@ -158,7 +164,7 @@ function card_data_lookup() {
                         else
                                 continue
                         fi
-                done < <(find "$LOOKUP_LOCATIONS" "${EXCLUDE_LOCATIONS[@]}" -type f)
+                done < <(find "$LOOKUP_LOCATIONS" "${EXCLUDE_LOCATIONS_LINUX[@]}" -type f)
         fi
 
         # Calculating number of files with Card numbers:
@@ -173,7 +179,6 @@ function card_data_lookup() {
                 elif [ "$LOOKUP_ARG" = "full" ]; then
                         echo "Full Card Data was found in $COUNT_TOTAL files!"
                         echo "----------------------------------------------"
-                        echo ""
                 fi
         fi
 }
@@ -211,8 +216,9 @@ if [ "$REMOTE_SHARE" = "yes" ]; then
                 echo "Unmounting REMOTE_SHARE - OK!"
                 rm -rf "$REPORTS_ROOT"
         else
-                echo "Unmountig REMOTE_SHAER - FAILED, check logs."
+                echo "Unmountig REMOTE_SHARE - FAILED, check logs."
                 exit 0
+
         fi
 fi
 
