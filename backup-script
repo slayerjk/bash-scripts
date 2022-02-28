@@ -13,7 +13,7 @@ START_TIME=$SECONDS
 
 ##### Define Backup Locations Section #####
 #(Re)Mount NFS dir, edit your storage details
-# Mount NFS: "yes"/"no"
+### Mount NFS: "yes"/"no" ###
 MOUNT_NFS="no"
 # Change nfs ip and export path accordingly
 NFS_IP=111.111.111.111
@@ -35,7 +35,7 @@ LOG_NAME=MYBACKUP_backup-script_$(date +%F).log
 ##############################################
 
 ##### Objects to backup#####
-# Backup mysql db: "yes"/"no"
+### Backup mysql db: "yes"/"no" ###
 MYSQL_BACKUP="yes"
 #DB data
 DB_NAME=mydb
@@ -46,9 +46,8 @@ USE_GZIP="yes"
 #Define dump file name w/wo gzip
 # WARNING: change only everything between $DB_NAME- and .sql
 DB_DUMP_FILE=$DB_NAME-$(date +%F).sql
-DB_DUMP_FILE_GZIP=$DB_NAME-$(date +%F).sql.gz
 
-# Backup files/dirs: "yes"/"no"
+### Backup files/dirs: "yes"/"no" ###
 FILES_BACKUP="yes"
 #File dir(s)
 #For several dirs use form with quotes: FILE_DIR="/dir1 /dir2"
@@ -56,7 +55,7 @@ FILE_DIR="/var/www/html/site"
 #TAR filename for site archive, dont't touch .tar.gz
 TAR_ARCHIVE_NAME=MYAPP-backup_$(date +%F).tar.gz
 
-#Define Number of backup files for each type of backup: monthly/weekly/daily
+# Backups Rotation: define Number of backup files to keep for each type of backup: monthly/weekly/daily
 NUMBER_OF_MONTHLY_BACKUPS=3
 NUMBER_OF_WEEKLY_BACKUPS=4
 NUMBER_OF_DAILY_BACKUPS=7
@@ -79,10 +78,37 @@ DoW=$(date +%u)
 
 #Inserting date in log
 echo "##################"
-echo "Starting new backup..."
+echo "Starting new backup job..."
 date
+echo "MySQL Backup is set to: $MYSQL_BACKUP"
+echo "Files Backup is set to: $FILES_BACKUP"
+echo "NFS mount set to: $MOUNT_NFS"  
 echo ""
 
+# Checking Mysqldum installed:
+if [ "$MYSQL_BACKUP" = "yes" ]; then
+  if [ "$MYSQLDUMP_INSTALLED" != "" ]; then
+    MYSQLDUMP_IS_POSSIBLE="yes"
+    echo "Checking mysqldump installed..."
+    echo "Mysqldump installed - OK"
+    echo ""
+  else
+    MYSQLDUMP_IS_POSSIBLE="no"
+    echo "Mysqldump installed - NO"
+    echo "MySQL backup is impossible fix it to proceed..."
+    echo ""
+  fi
+elif [ "$MYSQL_BACKUP" = "no" ]; then
+  MYSQLDUMP_IS_POSSIBLE="no"
+  echo ""
+else
+  MYSQLDUMP_IS_POSSIBLE="no"
+  echo "Check MYSQL_BACKUP variable: yes/no is only acceptable!"
+  echo "Skipping MySQL - $BACKUP_TYPE - backup..."
+  echo ""  
+fi  
+
+# Checking mount.nfs installed
 if [ "$MOUNT_NFS" = "yes" ]; then
   echo "Checking NFS client installed..."
   if [ "$NFSCLIENT_INSTALLED" != "" ]; then
@@ -91,20 +117,21 @@ if [ "$MOUNT_NFS" = "yes" ]; then
     echo "NFS Client installed - NO"
     echo "Backup Failed!"
     echo ""
+    cp "$TEMP_LOG" "$LOG_DIR"
     exit 1
   fi
   if mount -t nfs $NFS_IP:/$NFS_EXPORT_PATH $ROOT_BACKUP_DIR; then
-    echo "Mount NFS - YES"
     echo "Mounting NFS is OK!"
     echo ""
   else
     echo "Mounting NFS was FAILED, abort execution!"
     echo "Backup Failed!"
     echo ""
+    cp "$TEMP_LOG" "$LOG_DIR"
     exit 1
   fi
 elif [ "$MOUNT_NFS" = "no" ]; then
-  echo "Mount NFS - NO, using local backup dir"
+  echo "NFS not needed, using Local backup dir..."
   echo "Checking local backup dir..."
   if mkdir -p "$ROOT_BACKUP_DIR"; then
     echo "Local backup dir - OK"
@@ -113,11 +140,13 @@ elif [ "$MOUNT_NFS" = "no" ]; then
     echo "Creating local backup dir was failed, abort execution!"
     echo "Backup Failed!"
     echo ""
+    cp "$TEMP_LOG" "$LOG_DIR"
     exit 1
   fi
 else
   echo "Check MOUNT_NFS variable: yes/no is only acceptable!"
   echo "Backup Failed!"
+  cp "$TEMP_LOG" "$LOG_DIR"
   exit 1
 fi
 
@@ -137,17 +166,6 @@ fi
 #Define current date backup dir
 CURRENT_DATE_BACKUP_DIR=$(date +%F)
 
-###### Function GZIP/NO GZIP using for SQL-dump #####
-function using-gzip () {
-  if [[ "$USE_GZIP" == "yes" ]]; then
-    echo "Using GZIP..."
-    mysqldump -u "$DB_USER" -p"$DB_PASSWORD $DB_NAME" | gzip > "$CURRENT_DATE_BACKUP_PATH"/"$DB_DUMP_FILE_GZIP"
-  else
-    echo "No GZIP using..."
-    mysqldump -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" > "$CURRENT_DATE_BACKUP_PATH"/"$DB_DUMP_FILE"
-  fi
-}
-
 ##### Backup MySQL DB function #####
 function make_backup_mysql () {
   if [ $# -ne 1 ]; then
@@ -159,46 +177,52 @@ function make_backup_mysql () {
   fi
   # Backup Type must be: Monthly/Weekly/Daily
   BACKUP_TYPE=$1
-  echo "Making MySQL DB - $BACKUP_TYPE - backup..."
-  echo "Checking $BACKUP_TYPE backup dir..."
-  if mkdir -p "$ROOT_BACKUP_DIR"/"$BACKUP_TYPE"/"$CURRENT_DATE_BACKUP_DIR"; then
-    echo "Backup Dir - OK"
-  else
-    echo "Failed to create Backup Dir"
-    echo "MySQL Backup FAILED!"
-    echo ""
-    return
-  fi
   CURRENT_DATE_BACKUP_PATH=$ROOT_BACKUP_DIR/"$BACKUP_TYPE"/$CURRENT_DATE_BACKUP_DIR
   BACKUP_PATH_TYPE=$ROOT_BACKUP_DIR/"$BACKUP_TYPE"
-
   #DB backup
-  if [ "$MYSQL_BACKUP" = "yes" ]; then
-    # Checking Mysqldum installed:
-    if [ "$MYSQLDUMP_INSTALLED" != "" ]; then
-      echo "Mysqldump installed - OK"
+  if [ "$MYSQLDUMP_IS_POSSIBLE" = "yes" ]; then
+    echo "Making MySQL DB - $BACKUP_TYPE - backup..."
+    echo "Checking $BACKUP_TYPE backup dir..."
+    if mkdir -p "$ROOT_BACKUP_DIR"/"$BACKUP_TYPE"/"$CURRENT_DATE_BACKUP_DIR"; then
+      echo "Backup Dir - OK"
     else
-      echo "Mysqldump installed - NO"
-      echo "Skipping MySQL backup..."
+      echo "Failed to create Backup Dir"
+      echo "MySQL Backup FAILED!"
+      echo "Skipping MySQL - $BACKUP_TYPE - backup..."
       echo ""
       return
     fi  
     echo "Making $BACKUP_TYPE mysqldump..."
-    if using-gzip; then
-      echo "$BACKUP_TYPE: SQL dump DONE!"
-      echo ""
+    if [[ "$USE_GZIP" == "yes" ]]; then
+      if mysqldump -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" >"$CURRENT_DATE_BACKUP_PATH"/"$DB_DUMP_FILE"; then
+        if gzip "$CURRENT_DATE_BACKUP_PATH"/"$DB_DUMP_FILE"; then
+        echo "MySQL dump gziped OK"
+        echo "$BACKUP_TYPE: SQL backup DONE!"
+        echo ""
+        else
+          echo "$BACKUP_TYPE: SQL backup using gzip FAILED!"
+          echo "Skipping MySQL - $BACKUP_TYPE - backup..."
+          echo ""
+          return
+        fi
+      else
+        echo "$BACKUP_TYPE: SQL backup using gzip FAILED!"
+        echo "Skipping MySQL - $BACKUP_TYPE - backup..."
+        echo ""
+        return
+      fi
     else
-      echo "$BACKUP_TYPE: SQL dump FAILED!"
-      echo "MySQL Backup Failed!"
-      echo ""
-      return
-    fi
-  elif [ "$MYSQL_BACKUP" = "no" ]; then
-    echo "No MySQL backup needed, skipping..."
-  else
-    echo "Check MYSQL_BACKUP variable: yes/no is only acceptable!"
-    echo "Skipping MySQL backup"
-    echo ""
+      echo "No GZIP for MySQL backup..."
+      if mysqldump -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" >"$CURRENT_DATE_BACKUP_PATH"/"$DB_DUMP_FILE"; then
+        echo "$BACKUP_TYPE: MySQL dump without gzip DONE!"
+        echo ""
+      else
+        echo "$BACKUP_TYPE: MySQL dump FAILED"
+        echo "Skipping MySQL - $BACKUP_TYPE - backup..."
+        echo ""
+        return
+      fi
+    fi  
   fi
 }
 
@@ -213,36 +237,38 @@ function make_backup_files () {
   fi
   # Backup Type must be: Monthly/Weekly/Daily
   BACKUP_TYPE=$1
-  echo "Making Files - $BACKUP_TYPE - backup..."
-  echo "Checking $BACKUP_TYPE backup dir..."
-  if mkdir -p "$ROOT_BACKUP_DIR"/"$BACKUP_TYPE"/"$CURRENT_DATE_BACKUP_DIR"; then
-    echo "Backup Dir - OK"
-  else
-    echo "Failed to create Backup Dir"
-    echo "Files Backup FAILED!"
-    echo ""
-    return
-  fi
   CURRENT_DATE_BACKUP_PATH=$ROOT_BACKUP_DIR/"$BACKUP_TYPE"/$CURRENT_DATE_BACKUP_DIR
   BACKUP_PATH_TYPE=$ROOT_BACKUP_DIR/"$BACKUP_TYPE"
-
-  #Make tar archive of files dir(using tar)
+  # Files backup
   if [ "$FILES_BACKUP" = "yes" ]; then
+    echo "Making Files - $BACKUP_TYPE - backup..."
+    echo "Checking $BACKUP_TYPE backup dir..."
+    if mkdir -p "$ROOT_BACKUP_DIR"/"$BACKUP_TYPE"/"$CURRENT_DATE_BACKUP_DIR"; then
+      echo "Backup Dir - OK"
+    else
+      echo "Failed to create Backup Dir"
+      echo "Files Backup - $BACKUP_TYPE - FAILED!"
+      echo "Skipping Files - $BACKUP_TYPE - backup..."
+      echo ""
+      return
+    fi  
     echo "Making $BACKUP_TYPE Tar archive of files..."
     if tar -zcf "$CURRENT_DATE_BACKUP_PATH"/"$TAR_ARCHIVE_NAME" "${FILE_DIR[@]}"; then
       echo "$BACKUP_TYPE: Files backup DONE!"
       echo ""
     else
       echo "$BACKUP_TYPE: Files backup FAILED!"
-      echo "Files Backup FAILED!"
+      echo "Skipping Files - $BACKUP_TYPE - backup..."
       echo ""
       return
     fi
   elif [ "$FILES_BACKUP" = "no" ]; then
-    echo "No Files backup needed, skipping..."
+    echo "Skipping Files - $BACKUP_TYPE - backup..."
+    echo ""
   else
     echo "Check FILES_BACKUP variable: yes/no is only acceptable!"
-    echo "Files Backup FAILED!"
+    echo "$BACKUP_TYPE: Files backup FAILED!"
+    echo "Skipping Files - $BACKUP_TYPE - backup..."
     echo ""
     return
   fi
@@ -253,31 +279,31 @@ function rotate_backups () {
   if [ $# -ne 2 ]; then
     echo "Something wrong with parameters in backup-rotation functions."
     echo "There must be only 2 params: 1)num. of files to keep; 2)path of backup files; 3) backup type(Monthly/Weekly/Daily)"
-    echo "Skipping Backups rotation"
+    echo "Skipping - $BACKUP_TYPE - Backups rotation"
     echo ""
     return
   fi
   NUMBER_OF_FILES_TO_KEEP=$1
   BACKUP_TYPE=$2
   BACKUP_PATH_TYPE=$ROOT_BACKUP_DIR/"$BACKUP_TYPE"
-  COUNTER=1
+  COUNTER=0
   IFS=$'\n' # adding posibilty to see file with spaces in name
   set -o noglob # adding posibilty to see file with spaces in name
+  echo "Starting - $BACKUP_TYPE - Backups rotation..."
   for file in $(ls -t "$BACKUP_PATH_TYPE"); do
-    if [ $COUNTER -le "$NUMBER_OF_FILES_TO_KEEP" ]; then
+    if [ $COUNTER -lt "$NUMBER_OF_FILES_TO_KEEP" ]; then
        ((COUNTER++))
        continue
     fi
-    if [ "$COUNTER" -eq 0 ]; then
-      echo "No files to rotate"
-      echo "Skipping backup rotation..."
+    if rm -vrf "${BACKUP_PATH_TYPE:?}"/"$file"; then
+      echo "Deleting old file ($file) in logs dir..."
+    else
+      echo "Skipping Log rotation..."
       echo ""
-      break
+    return 
     fi
-    echo "Deleting old file ($file) - in backup dir..."
-    rm -vrf "${BACKUP_PATH_TYPE:?}"/"$file"
   done
-  echo "Backups rotation DONE!"
+  echo "$BACKUP_TYPE Backups rotation DONE!"
   echo ""
 }
 
@@ -291,23 +317,23 @@ function rotate_logs () {
   fi
   NUMBER_OF_FILES_TO_KEEP=$1
   PATH_OF_LOGS=$2
-  COUNTER=1
+  COUNTER=0
   IFS=$'\n' # adding posibilty to see file with spaces in name
   set -o noglob # adding posibilty to see file with spaces in name
-  echo "Starting Logs rotation"
+  echo "Starting Logs rotation..."
   for file in $(ls -t "$PATH_OF_LOGS"); do
-    if [ $COUNTER -le "$NUMBER_OF_FILES_TO_KEEP" ]; then
+    if [ $COUNTER -lt "$NUMBER_OF_FILES_TO_KEEP" ]; then
       ((COUNTER++))
       continue
     fi
-    if [ "$COUNTER" -eq 0 ]; then
-      echo "No files to rotate"
+    echo "Deleting old file ($file) in logs dir..."
+    if rm -vrf "${PATH_OF_LOGS:?}"/"$file"; then
+      echo "Deleting old file ($file) in logs dir..."
+    else
       echo "Skipping Log rotation..."
       echo ""
-      break
+    return
     fi
-    echo "Deleting old file ($file) in logs dir..."
-    rm -vrf "${PATH_OF_LOGS:?}"/"$file"
   done
   echo "Log rotation DONE!"
   echo ""
