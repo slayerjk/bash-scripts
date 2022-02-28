@@ -1,2 +1,2 @@
-- **backup-script**: my linux backup script of files and/or mysql db with backups rotation(monthly/weekly/daily) and backup logs rotation.
-- **visa-n-master-card_linux_lookup**: PAN data lookup in linux/solaris non-binary files os with reports.
+- **backup-script**: linux bash backup script of files and/or mysql db with backups rotation(monthly/weekly/daily) and backup logs rotation.
+- **visa-n-master-card_linux_lookup**: bash script for PAN data lookup in linux/solaris non-binary files with reports.
