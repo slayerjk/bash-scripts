@@ -5,16 +5,16 @@ export PATH=$PATH:/usr/bin
 # Setting Start time counter(seconds):
 START_TIME=$SECONDS
 
-#################################################
-#EDIT THIS SECTION
-#################################################
-#
 # This script locks up Linux users by inactivity(days) with logging and log rotation
 #
 # Thanks for Date diff calc solution to: https://www.unix.com/shell-programming-and-scripting/179789-calculate-number-days-between-2-dates-bash-script.html
 #
 # Needs adminstrative privileges(sudo).
-#
+
+#################################################
+#EDIT THIS SECTION
+#################################################
+
 # Date difference(from script running time) to lock the user
 DAYS_TO_LOCK=14
 CURRENT_DATE=$(date +%s)
