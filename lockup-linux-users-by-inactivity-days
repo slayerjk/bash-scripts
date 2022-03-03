@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+
+#Defining PATH for commands
+export PATH=$PATH:/usr/bin
+# Setting Start time counter(seconds):
+START_TIME=$SECONDS
+
+#################################################
+#EDIT THIS SECTION
+#################################################
+#
+# This script locks up Linux users by inactivity(days) with logging and log rotation
+#
+# Thanks for Date diff calc solution to: https://www.unix.com/shell-programming-and-scripting/179789-calculate-number-days-between-2-dates-bash-script.html
+#
+# Needs adminstrative privileges(sudo).
+#
+# Date difference(from script running time) to lock the user
+DAYS_TO_LOCK=14
+CURRENT_DATE=$(date +%s)
+
+# List of UNTOUCHABLE users(no lock after timeout) - example: ("root" "your-admin-user" "another-user")
+LIST_UNTOUCHABLES=("root" "your-admin-user")
+
+# Logging
+LOG_DIR=/var/log/LOCK-USERS-SCRIPT_LOGS
+# Keep last num of logs
+KEEP_LOGS_NUM=30
+LOG_NAME=lockup-user-script_$(date +%F).log
+
+##################################################
+#NO NEED TO EDIT FURTHER
+##################################################
+
+# Creating(if not) Log dir
+mkdir -p "$LOG_DIR"
+
+# Write STDOUT and STDERR in LOG_NAME; comment it for DEBUG!
+exec 1>>"$LOG_DIR"/"$LOG_NAME" 2>&1
+
+#Inserting date in log
+echo "##################"
+echo "Starting new lockup user by inactivity script job..."
+date
+echo ""
+
+LIST_OF_LOCKED=()
+
+echo "Last user's login date(not in untouchable list):"
+for userpwd in $(cut -d : -f 1 /etc/passwd); do
+  CHECK_LAST_LOGIN=$(last --fullnames "$userpwd" | head -n 1)
+  CHECK_LAST_LOGIN_DATE=$(last --fullnames "$userpwd" --time-format iso | head -n 1| awk '{print $4}')
+  if [ "$CHECK_LAST_LOGIN" = "" ]; then
+    continue
+  else
+    COUNT=0
+    for untouchable in "${LIST_UNTOUCHABLES[@]}"; do
+      if [ "$userpwd" == "$untouchable" ]; then
+        ((COUNT++))
+        break
+      else
+       continue
+      fi
+    done
+    if [ "$COUNT" -eq 0 ]; then
+      echo "$userpwd last login: $CHECK_LAST_LOGIN_DATE"
+      # Date diff calc
+      LOGIN_DATE_TO_UNIX=$(date -d "$CHECK_LAST_LOGIN_DATE" +%s)
+      DATE_DIFF=$(("$CURRENT_DATE"-"$LOGIN_DATE_TO_UNIX"))
+      DIFF_TO_DAYS=$(("$DATE_DIFF"/(60*60*24)))
+      echo "Diff of current date and last login for $userpwd is: $DIFF_TO_DAYS"
+      if [ "$DIFF_TO_DAYS" -ge "$DAYS_TO_LOCK" ]; then
+          echo "$userpwd last login session timeout is out of date"
+          echo "Processing $userpwd lockout..."
+        if usermod -L "$userpwd"; then
+          echo "$userpwd lockout - DONE!"
+          LIST_OF_LOCKED+=("$userpwd")
+        else
+          echo "Error during $userpwd lockout - FAILED!"
+        fi
+      else
+        echo "No need to lock $userpwd, skipping..."
+      fi
+    fi
+  fi
+  echo "-----"
+done
+
+##### Log Rotate function #####
+function rotate_logs () {
+  if [ $# -ne 2 ]; then
+    echo "Something wrong with parameters in log rotation functions."
+    echo "There must be only 2 params: 1)num. of files to keep(KEEP_LOGS_NUM); 2)path of log files."
+    echo "Log Rotation FAILED!"
+    return
+  fi
+  NUMBER_OF_FILES_TO_KEEP=$1
+  PATH_OF_LOGS=$2
+  COUNTER=0
+  IFS=$'\n' # adding posibilty to see file with spaces in name
+  set -o noglob # adding posibilty to see file with spaces in name
+  echo "Starting Logs rotation..."
+  for file in $(ls -t "$PATH_OF_LOGS"); do
+    if [ $COUNTER -lt "$NUMBER_OF_FILES_TO_KEEP" ]; then
+      ((COUNTER++))
+      continue
+    fi
+    echo "Deleting old file ($file) in logs dir..."
+    if rm -vrf "${PATH_OF_LOGS:?}"/"$file"; then
+      echo "Deleting old file ($file) in logs dir..."
+    else
+      echo "Skipping Log rotation..."
+      echo ""
+    return
+    fi
+  done
+  echo "Log rotation DONE!"
+  echo ""
+}
+##### Rotating Logs #####
+echo "Processing Logs rotation"
+rotate_logs $KEEP_LOGS_NUM $LOG_DIR
+
+echo "####################"
+echo "DONE!"
+echo ""
+echo "List of Locked users:"
+for user in "${LIST_OF_LOCKED[@]}"; do 
+  echo "$user"; 
+done
+echo ""
+
+ELAPSED_TIME=$((SECONDS - START_TIME))
+echo "Elapsed time is - $ELAPSED_TIME seconds"
+echo "####################"
