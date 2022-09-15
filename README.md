@@ -1,3 +1,4 @@
 - **backup-script**: linux bash backup script of files and/or mysql db with backups rotation(monthly/weekly/daily) and backup logs rotation; needs adminstrative privileges.
 - **visa-n-master-card_linux_lookup**: bash script for PAN data lookup in linux/solaris non-binary files with reports; with logging and log rotation; needs adminstrative privileges.
 - **lockup-linux-users-by-inactivity-days**: bash script locks up Linux users by inactivity(days); with logging and log rotation; needs adminstrative privileges.
+- **log-lsof-by-pid**: bash script to log lsof output for chosen pid(details inside), works for 2min(default).
