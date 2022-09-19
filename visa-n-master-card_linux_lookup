@@ -134,6 +134,7 @@ function card_data_lookup() {
                         var=$(ggrep -nosEI "$REGEXP" "$file")
                         if [ -n "$var" ]; then
                                 echo "$file"
+                                echo "BIRTH DATE is: $(stat -c %w "$file")"
                                 echo "$var"
                                 echo ""
                                 ((COUNT_TOTAL++))
@@ -153,6 +154,7 @@ function card_data_lookup() {
                         var=$(grep -nosEI "$REGEXP" "$file")
                         if [ -n "$var" ]; then
                                 echo "$file"
+                                echo "BIRTH DATE is: $(stat -c %w "$file")"
                                 echo "$var"
                                 echo ""
                                 ((COUNT_TOTAL++))
