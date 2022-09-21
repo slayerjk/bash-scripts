@@ -9,7 +9,7 @@ START_TIME=$SECONDS
 ### SCRIPT INFO ##
 ##################
 
-# Log-Lsof - this script purpose is to log all lsof outupt by PID/DIR/BOTH
+# Log-Lsof-by-Pid - this script purpose is to log all lsof outupt by PID
 # By default script works for 2 minutes
 # pgrep - must be installed
 # lsof - must be installed
@@ -19,7 +19,7 @@ START_TIME=$SECONDS
 #################################################
 
 LOG_DIR=/tmp
-LOG_NAME=log-lsof-by-pid_$(date +%F).log
+LOG_NAME=log-lsof_$(date +%F).log
 
 LSOF_INTERVAL=2
 TIME_TO_RUN=120
@@ -37,7 +37,7 @@ PID_NAME='wazuh-syscheckd'
 
 ### DIRS TO INSPECT
 ### DIRECTORIES MUST EXIST!
-DIRS=(/alliance)
+DIR=/<your-dir>
 
 #######################
 # DONT'T EDIT FURTHER #
@@ -83,7 +83,7 @@ elif [ "$OPTION" = "both" ]; then
   echo "Running script with both PID&DIR option"
   while [ "$ELAPSED_TIME" -le "$TIME_TO_RUN" ]; do
     echo "=============="
-    lsof -p "$PID" +D "${DIRS[@]}" -a
+    lsof -p "$PID" +D "$DIR" -a
     echo "Elased time is: $((SECONDS - START_TIME))"
     sleep $LSOF_INTERVAL
     ELAPSED_TIME=$((SECONDS - START_TIME))
@@ -94,7 +94,7 @@ elif [ "$OPTION" = "dir" ]; then
   echo "Running script with DIR option"
   while [ "$ELAPSED_TIME" -le "$TIME_TO_RUN" ]; do
     echo "=============="
-    lsof +D "${DIRS[@]}"
+    lsof +D "$DIR"
     echo "Elased time is: $((SECONDS - START_TIME))"
     sleep $LSOF_INTERVAL
     ELAPSED_TIME=$((SECONDS - START_TIME))
