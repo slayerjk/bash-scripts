@@ -9,7 +9,7 @@ START_TIME=$SECONDS
 ### SCRIPT INFO ##
 ##################
 
-# Log-Lsof-by-Pid - this script purpose is to log all lsof outupt by PID
+# Log-Lsof - this script purpose is to log all lsof outupt by PID/DIR/BOTH
 # By default script works for 2 minutes
 # pgrep - must be installed
 # lsof - must be installed
