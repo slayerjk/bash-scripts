@@ -53,11 +53,12 @@ ELAPSED_TIME=$((SECONDS - START_TIME))
 while [ "$ELAPSED_TIME" -le "$TIME_TO_RUN" ]; do
   echo "=============="
   lsof -p "$PID"
-  echo "Elased time is: $((SECONDS - START_TIME))"
+  echo "--------------"
+  echo "Elapsed time is: $((SECONDS - START_TIME))"
   sleep $LSOF_INTERVAL
   ELAPSED_TIME=$((SECONDS - START_TIME))
 done
 
-echo "###############"
 echo "Script DONE!"
+echo "###############"
 exit 0
