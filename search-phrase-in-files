@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+echo "Enter your 'PHRASE' to search:"
+read -r PHRASE
+echo "Enter your absolute path to search in:"
+read -r LOCATION
+
+while read -r file
+do
+        var=$(grep -noEI "$PHRASE" "$file")
+        if [ -n "$var" ]
+        then
+                echo "$file"
+                echo "$var"
+        else
+                continue
+        fi
+done < <(find "$LOCATION" -type f)
