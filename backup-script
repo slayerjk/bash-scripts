@@ -55,7 +55,7 @@ FILES_BACKUP="yes"
 #File dir(s)
 #For several dirs use form with quotes: FILE_DIR=(/dir1 /dir2)
 FILE_DIR=(/etc /var/opt)
-#TAR filename for site archive, dont't touch .tar.gz
+#TAR filename for files archive, dont't touch .tar.gz
 TAR_ARCHIVE_NAME=$HOST-files_$(date +%F).tar.gz
 
 # Backups Rotation: define Number of backup files to keep for each type of backup: monthly/weekly/daily
@@ -74,8 +74,8 @@ BACKUP_PATH=$BACKUP_MOUNT/$ROOT_BACKUP_DIR
 # Creating Log dir
 mkdir -p "$LOG_DIR"
 
-MYSQLDUMP_INSTALLED=$(whereis mysqldump | cut -d : -f 2)
-NFSCLIENT_INSTALLED=$(whereis mount.nfs | cut -d : -f 2)
+MYSQLDUMP_INSTALLED=$(which mysqldump 2>/dev/null)
+NFSCLIENT_INSTALLED=$(which mount.nfs 2>/dev/null)
 
 # Write STDOUT and STDERR in LOG_NAME; comment it for DEBUG!
 exec 1>"$LOG_NAME" 2>&1
