@@ -89,32 +89,11 @@ DoW=$(date +%u)
 echo "##################"
 echo "Starting new backup job..."
 date
+echo ""
+echo "NFS mount set to: $MOUNT_NFS"
 echo "MySQL Backup is set to: $MYSQL_BACKUP"
 echo "Files Backup is set to: $FILES_BACKUP"
-echo "NFS mount set to: $MOUNT_NFS"
-
-# Checking Mysqldum installed:
-if [ "$MYSQL_BACKUP" = "yes" ]; then
-  if [ "$MYSQLDUMP_INSTALLED" != "" ]; then
-    MYSQLDUMP_IS_POSSIBLE="yes"
-    echo "Checking mysqldump installed..."
-    echo "Mysqldump installed - OK"
-    echo ""
-  else
-    MYSQLDUMP_IS_POSSIBLE="no"
-    echo "Mysqldump installed - NO"
-    echo "MySQL backup is impossible fix it to proceed..."
-    echo ""
-  fi
-elif [ "$MYSQL_BACKUP" = "no" ]; then
-  MYSQLDUMP_IS_POSSIBLE="no"
-  echo ""
-else
-  MYSQLDUMP_IS_POSSIBLE="no"
-  echo "Check MYSQL_BACKUP variable: yes/no is only acceptable!"
-  echo "Skipping MySQL - $BACKUP_TYPE - backup..."
-  echo ""
-fi
+echo ""
 
 # Checking mount.nfs installed
 if [ "$MOUNT_NFS" = "yes" ]; then
@@ -165,6 +144,29 @@ fi
 
 #Define current date backup dir
 CURRENT_DATE_BACKUP_DIR=$(date +%F)
+
+# Checking Mysqldum installed:
+if [ "$MYSQL_BACKUP" = "yes" ]; then
+  if [ "$MYSQLDUMP_INSTALLED" != "" ]; then
+    MYSQLDUMP_IS_POSSIBLE="yes"
+    echo "Checking mysqldump installed..."
+    echo "Mysqldump installed - OK"
+    echo ""
+  else
+    MYSQLDUMP_IS_POSSIBLE="no"
+    echo "Mysqldump installed - NO"
+    echo "MySQL backup is impossible fix it to proceed..."
+    echo ""
+  fi
+elif [ "$MYSQL_BACKUP" = "no" ]; then
+  MYSQLDUMP_IS_POSSIBLE="no"
+  echo ""
+else
+  MYSQLDUMP_IS_POSSIBLE="no"
+  echo "Check MYSQL_BACKUP variable: yes/no is only acceptable!"
+  echo "Skipping MySQL - $BACKUP_TYPE - backup..."
+  echo ""
+fi
 
 ##### Backup MySQL DB function #####
 function make_backup_mysql () {
