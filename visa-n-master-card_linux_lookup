@@ -2,6 +2,9 @@
 
 ### This is Visa/MasterCard Card Sensitive Data lookup script. ###
 
+### Release: 19.09.2021
+### Update: 15.11.2022 (+list of lookup dirs, +check dir exists, *cn_only search regexp extended)
+
 ### !!! This is BASH script, so BASH must be installed.
 ### !!! For Solaris support "ggrep" util must be installed !!! ###
 ### !!! For Solaris support "gfind" util must be installed !!! ###
@@ -30,19 +33,20 @@ REPORTS_MOUNT="/atmddk"
 REPORT_NAME=report_$(hostname)_$(date +%F).log
 
 # Location for Card numbers lookup
-LOOKUP_LOCATIONS="/"
+LOOKUP_LOCATIONS=(/home /export/home /backup)
 
 # Exclude locations to search for Solaris/Linux
 if [ "$OS" = "Solaris" ]; then
-        # Solaris list
-        EXCLUDE_LOCATIONS_SOLARIS=(-not -path "$REPORTS_MOUNT/*" -not -path '/boot/*' -not -path '/proc/*' -not -path '/bin/*' -not -path '/sbin/*' -not -path '/mnt/*' -not -path '/lib/*' -not -path '/dev/*' -not -path '/usr/lib/*' -not -path '/var/lib/*' -not -path '/platform/*' -not -path '/system/*' -not -path '/tmp/*')
+	# Solaris list
+	EXCLUDE_LOCATIONS_SOLARIS=(-not -path "$REPORTS_MOUNT/*" -not -path '/boot/*' -not -path '/proc/*' -not -path '/bin/*' -not -path '/sbin/*' -not -path '/mnt/*' -not -path '/lib/*' -not -path '/dev/*' -not -path '/usr/lib/*' -not -path '/var/lib/*' -not -path '/platform/*' -not -path '/system/*' -not -path '/tmp/*')
 else
-        # Linux list
-        EXCLUDE_LOCATIONS_LINUX=(-not -path "$REPORTS_MOUNT/*" -not -path '/boot/*' -not -path '/proc/*' -not -path '/bin/*' -not -path '/sbin/*' -not -path '/mnt/*' -not -path '/lib/*' -not -path '/lib64/*' -not -path '/sys/*' -not -path '/dev/*' -not -path '/run/*' -not -path '/usr/lib/*' -not -path '/usr/lib64/*' -not -path '/var/lib/*' -not -path '/tmp/*' -not -path '/var/ossec/queue/*')
+	# Linux list
+	EXCLUDE_LOCATIONS_LINUX=(-not -path "$REPORTS_MOUNT/*" -not -path '/boot/*' -not -path '/proc/*' -not -path '/bin/*' -not -path '/sbin/*' -not -path '/mnt/*' -not -path '/lib/*' -not -path '/lib64/*' -not -path '/sys/*' -not -path '/dev/*' -not -path '/run/*' -not -path '/usr/lib/*' -not -path '/usr/lib64/*' -not -path '/var/lib/*' -not -path '/tmp/*' -not -path '/var/ossec/queue/*')
 fi
 
 # Card number lookup variables(Visa & Master Card)
-REGEXP_CN="[45][0-9]{3}(-|\s)[0-9]{4}(-|\s)[0-9]{4}(-|\s)[0-9]{4}"
+#REGEXP_CN="[45][0-9]{3}(-|\s)[0-9]{4}(-|\s)[0-9]{4}(-|\s)[0-9]{4}"
+REGEXP_CN="[45][0-9]{3}[\s\-\.\/\|_\\]?[0-9]{4}[\s\-\.\/\|_\\]?[0-9]{4}[\s\-\.\/\|_\\]?[0-9]{4}"
 REGEXP_FULL="[45][0-9]{15}\s[a-zA-Z]{1,}(/|\\\\|_|-|\s)[a-zA-Z]{1,}\s[0-9]{2}(/|\\\\|_|-|\s)[0-9]{2}\s[0-9]{3}"
 # What option do you want to lookup:
 # "cn_only" to lookup CardNumber only
@@ -54,34 +58,33 @@ LOOKUP_OPTION="both"
 # DONT'T EDIT FURTHER #
 #######################
 
-
 # If using Local report storage
 if [ "$REMOTE_SHARE" = "no" ]; then
-        if [ ! -d "$REPORTS_MOUNT" ]; then
-                mkdir -p "$REPORTS_MOUNT"
-        fi
+	if ! [ -d "$REPORTS_MOUNT" ]; then
+		mkdir -p "$REPORTS_MOUNT"
+	fi
 fi
 
 # If using REMOTE_SHARE for reports
 if [ "$REMOTE_SHARE" = "yes" ]; then
-        if ! mount "$REPORTS_MOUNT"; then
-                echo "Mounting REMOTE_SHARE - FAILED!"
-                echo "SCRIPT FAILED! Terminating..."
-                echo ""
-                exit 1
-        fi
+	if ! mount "$REPORTS_MOUNT"; then
+		echo "Mounting REMOTE_SHARE - FAILED!"
+		echo "SCRIPT FAILED! Terminating..."
+		echo ""
+		exit 1
+	fi
 fi
 
 # Making report dir:
 if [ ! -d "$REPORTS_MOUNT"/CN-Reports ]; then
-        mkdir -p "$REPORTS_MOUNT"/CN-Reports
+	mkdir -p "$REPORTS_MOUNT"/CN-Reports
 fi
 
 REPORTS_ROOT="$REPORTS_MOUNT"/CN-Reports
 CURRENT_DATE=$(hostname)_$(date +%F)
 
 if [ ! -d "$REPORTS_ROOT"/"$CURRENT_DATE" ]; then
-        mkdir -p "$REPORTS_ROOT"/"$CURRENT_DATE"
+	mkdir -p "$REPORTS_ROOT"/"$CURRENT_DATE"
 fi
 
 CURRENT_DATE_REPORT_DIR="$REPORTS_ROOT"/"$CURRENT_DATE"
@@ -98,91 +101,106 @@ echo "Computer name is -  $(hostname)"
 echo "Computer OS type is - $OS"
 
 if [ "$OS" = "Solaris" ]; then
-        echo "Computer IP is - $(ifconfig net0 | grep "inet" | awk '{print $2}')"
+	echo "Computer IP is - $(ifconfig net0 | grep "inet" | awk '{print $2}')"
 else
-        echo "Computer ip is - $(hostname -I)"
+	echo "Computer ip is - $(hostname -I)"
 fi
 
 echo "Date is - $(date)"
 echo "#################################"
 echo ""
 
+### Dir exists check up ###
+echo "Checking lookup dir existance..."
+LOOKUP_LOCATIONS_CHECKED=()
+for dir in "${LOOKUP_LOCATIONS[@]}"; do
+	if ! [ -d "$dir" ]; then
+		continue
+	else
+		LOOKUP_LOCATIONS_CHECKED+=("$dir")
+	fi
+done
+echo "List of dirs to scan:"
+echo "${LOOKUP_LOCATIONS_CHECKED[@]}"
+
 ### Defining CN lookup function ###
 function card_data_lookup() {
-        LOOKUP_ARG=$1
-        if [ "$LOOKUP_ARG" = "cn_only" ]; then
-                REGEXP="$REGEXP_CN"
-                echo "----------------------------------------------"
-                echo "Starting Card Number Only lookup:"
-                echo ""
-        elif [ "$LOOKUP_ARG" = "full" ]; then
-                REGEXP="$REGEXP_FULL"
-                echo "----------------------------------------------"
-                echo "Starting Card Full Data lookup:"
-                echo ""
-        fi
+	LOOKUP_ARG=$1
+	if [ "$LOOKUP_ARG" = "cn_only" ]; then
+		REGEXP="$REGEXP_CN"
+		echo "----------------------------------------------"
+		echo "Starting Card Number Only lookup:"
+		echo ""
+	elif [ "$LOOKUP_ARG" = "full" ]; then
+		REGEXP="$REGEXP_FULL"
+		echo "----------------------------------------------"
+		echo "Starting Card Full Data lookup:"
+		echo ""
+	fi
 
-        # Counters for lookups
-        COUNT_TOTAL=0
+	# Counters for lookups
+	COUNT_TOTAL=0
 
-        # Lookup for Visa/MasterCard
+	# Lookup for Visa/MasterCard
 
-        
-                
-        if [ "$OS" = "Solaris" ]; then
-                while read -r file; do
-                        var=$(ggrep -nosEI "$REGEXP" "$file")
-                        if [ -n "$var" ]; then
-                                echo "$file"
-                                echo "BIRTH DATE is: $(stat -c %w "$file")"
-                                echo "$var"
-                                echo ""
-                                ((COUNT_TOTAL++))
-                                # Making dir for evidence files
-                                if [ ! -d "$CURRENT_DATE_REPORT_DIR"/evidences ]; then
-                                        mkdir -p "$CURRENT_DATE_REPORT_DIR"/evidences
-                                fi
-                        cp "$file" "$CURRENT_DATE_REPORT_DIR"/evidences
-                        else
-                                continue
-                        fi
-                done < <(gfind "$LOOKUP_LOCATIONS" "${EXCLUDE_LOCATIONS_SOLARIS[@]}" -type f)
-                
-                
-        else
-                while read -r file; do
-                        var=$(grep -nosEI "$REGEXP" "$file")
-                        if [ -n "$var" ]; then
-                                echo "$file"
-                                echo "BIRTH DATE is: $(stat -c %w "$file")"
-                                echo "$var"
-                                echo ""
-                                ((COUNT_TOTAL++))
-                                # Making dir for evidence files
-                                if [ ! -d "$CURRENT_DATE_REPORT_DIR"/evidences ]; then
-                                        mkdir -p "$CURRENT_DATE_REPORT_DIR"/evidences
-                                fi
-                                cp "$file" "$CURRENT_DATE_REPORT_DIR"/evidences
-                        else
-                                continue
-                        fi
-                done < <(find "$LOOKUP_LOCATIONS" "${EXCLUDE_LOCATIONS_LINUX[@]}" -type f)
-        fi
+	if [ "$OS" = "Solaris" ]; then
 
-        # Calculating number of files with Card numbers:
-        if [[ "$COUNT_TOTAL" -eq 0 ]]; then
-                echo "Data hasn't been found!"
-                echo ""
-        else
-                if [ "$LOOKUP_ARG" = "cn_only" ]; then
-                        echo "Card Numbers was found in $COUNT_TOTAL files!"
-                        echo "----------------------------------------------"
-                        echo ""
-                elif [ "$LOOKUP_ARG" = "full" ]; then
-                        echo "Full Card Data was found in $COUNT_TOTAL files!"
-                        echo "----------------------------------------------"
-                fi
-        fi
+		for dir in "${LOOKUP_LOCATIONS_CHECKED[@]}"; do
+			while read -r file; do
+				var=$(ggrep -nosEI "$REGEXP" "$file")
+				if [ -n "$var" ]; then
+					echo "$file"
+					echo "BIRTH DATE is: $(stat -c %w "$file")"
+					echo "$var"
+					echo ""
+					((COUNT_TOTAL++))
+					# Making dir for evidence files
+					if [ ! -d "$CURRENT_DATE_REPORT_DIR"/evidences ]; then
+						mkdir -p "$CURRENT_DATE_REPORT_DIR"/evidences
+					fi
+					cp "$file" "$CURRENT_DATE_REPORT_DIR"/evidences
+				else
+					continue
+				fi
+			done < <(gfind "$dir" "${EXCLUDE_LOCATIONS_SOLARIS[@]}" -type f 2>&1 | grep -v "No such file or directory")
+		done
+	else
+		for dir in "${LOOKUP_LOCATIONS_CHECKED[@]}"; do
+			while read -r file; do
+				var=$(grep -nosEI "$REGEXP" "$file")
+				if [ -n "$var" ]; then
+					echo "$file"
+					echo "BIRTH DATE is: $(stat -c %w "$file")"
+					echo "$var"
+					echo ""
+					((COUNT_TOTAL++))
+					# Making dir for evidence files
+					if [ ! -d "$CURRENT_DATE_REPORT_DIR"/evidences ]; then
+						mkdir -p "$CURRENT_DATE_REPORT_DIR"/evidences
+					fi
+					cp "$file" "$CURRENT_DATE_REPORT_DIR"/evidences
+				else
+					continue
+				fi
+			done < <(find "$dir" "${EXCLUDE_LOCATIONS_LINUX[@]}" -type f)
+		done
+	fi
+
+	# Calculating number of files with Card numbers:
+	if [[ "$COUNT_TOTAL" -eq 0 ]]; then
+		echo ""
+		echo "Data hasn't been found!"
+		echo ""
+	else
+		if [ "$LOOKUP_ARG" = "cn_only" ]; then
+			echo "Card Numbers was found in $COUNT_TOTAL files!"
+			echo "----------------------------------------------"
+			echo ""
+		elif [ "$LOOKUP_ARG" = "full" ]; then
+			echo "Full Card Data was found in $COUNT_TOTAL files!"
+			echo "----------------------------------------------"
+		fi
+	fi
 }
 
 ### Now call function
@@ -190,17 +208,17 @@ function card_data_lookup() {
 case "$LOOKUP_OPTION" in
 
 "both")
-        card_data_lookup "cn_only"
-        card_data_lookup "full"
-        ;;
+	card_data_lookup "cn_only"
+	card_data_lookup "full"
+	;;
 
 "cn_only")
-        card_data_lookup "cn_only"
-        ;;
+	card_data_lookup "cn_only"
+	;;
 
 "full")
-        card_data_lookup "full"
-        ;;
+	card_data_lookup "full"
+	;;
 esac
 
 ELAPSED_TIME=$((SECONDS - START_TIME))
@@ -214,14 +232,14 @@ cp "$TEMP_REPORT" "$CURRENT_DATE_REPORT_DIR"
 
 # Unmount REPORT_SHARE
 if [ "$REMOTE_SHARE" = "yes" ]; then
-        if umount "$REPORTS_MOUNT"; then
-                echo "Unmounting REMOTE_SHARE - OK!"
-                rm -rf "$REPORTS_ROOT"
-        else
-                echo "Unmountig REMOTE_SHARE - FAILED, check logs."
-                exit 0
+	if umount "$REPORTS_MOUNT"; then
+		echo "Unmounting REMOTE_SHARE - OK!"
+		rm -rf "$REPORTS_ROOT"
+	else
+		echo "Unmountig REMOTE_SHARE - FAILED, check logs."
+		exit 0
 
-        fi
+	fi
 fi
 
 rm "$TEMP_REPORT"
