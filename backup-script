@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 #Defining PATH for commands
 export PATH=$PATH:/usr/bin
 # Setting Start time counter(seconds):
@@ -22,8 +23,8 @@ MOUNT_NFS="yes"
 # NFS Mount Point or Local Dir for Local Backups if MOUNT_NFS="no"
 BACKUP_MOUNT=/mnt
 # Change nfs ip and export path accordingly
-NFS_IP=<your_nfs_ip>
-NFS_EXPORT_PATH=/YOUR_NFS_EXPORT_PATH
+NFS_IP=1.1.1.1
+NFS_EXPORT_PATH=/YOUR-NFS-EXPORT-PATH
 ############################################
 
 ##### Logging Section(LOG_DIR must exists) #####
@@ -41,9 +42,9 @@ LOG_NAME=$LOG_DIR/$HOST-backup-script_$(date +%F).log
 ### Backup mysql db: "yes"/"no" ###
 MYSQL_BACKUP="no"
 #DB data
-DB_NAME=mydb
-DB_USER=root
-DB_PASSWORD="password"
+DB_NAME=MYDB_NAME
+DB_USER=MYDB_USER
+DB_PASSWORD="DB_USER_PASSWORD"
 #Gzip using: yes/no
 USE_GZIP="yes"
 #Define dump file name w/wo gzip
@@ -74,8 +75,8 @@ BACKUP_PATH=$BACKUP_MOUNT/$ROOT_BACKUP_DIR
 # Creating Log dir
 mkdir -p "$LOG_DIR"
 
-MYSQLDUMP_INSTALLED=$(which mysqldump 2>/dev/null)
-NFSCLIENT_INSTALLED=$(which mount.nfs 2>/dev/null)
+MYSQLDUMP_INSTALLED=$(whereis mount.nfs | grep -io "mount.nfs ")
+NFSCLIENT_INSTALLED=$(whereis mount.nfs | grep -io "mount.nfs ")
 
 # Write STDOUT and STDERR in LOG_NAME; comment it for DEBUG!
 exec 1>"$LOG_NAME" 2>&1
@@ -169,7 +170,7 @@ else
 fi
 
 ##### Backup MySQL DB function #####
-function make_backup_mysql () {
+function make_backup_mysql() {
   if [ $# -ne 1 ]; then
     echo "Something wrong with parameters in backup-rotation functions."
     echo "There must be only 1 param: Monthly/Weekly/Daily"
@@ -198,9 +199,9 @@ function make_backup_mysql () {
     if [[ "$USE_GZIP" == "yes" ]]; then
       if mysqldump -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" >"$CURRENT_DATE_BACKUP_PATH"/"$DB_DUMP_FILE"; then
         if gzip "$CURRENT_DATE_BACKUP_PATH"/"$DB_DUMP_FILE"; then
-        echo "MySQL dump gziped OK"
-        echo "$BACKUP_TYPE: SQL backup DONE!"
-        echo ""
+          echo "MySQL dump gziped OK"
+          echo "$BACKUP_TYPE: SQL backup DONE!"
+          echo ""
         else
           echo "$BACKUP_TYPE: SQL backup using gzip FAILED!"
           echo "Skipping MySQL - $BACKUP_TYPE - backup..."
@@ -229,7 +230,7 @@ function make_backup_mysql () {
 }
 
 ##### Backup Files function #####
-function make_backup_files () {
+function make_backup_files() {
   if [ $# -ne 1 ]; then
     echo "Something wrong with parameters in backup-rotation functions."
     echo "There must be only 1 param: Monthly/Weekly/Daily"
@@ -255,7 +256,7 @@ function make_backup_files () {
       return
     fi
     echo "Making $BACKUP_TYPE Tar archive of files..."
-    if tar -czf "$CURRENT_DATE_BACKUP_PATH"/"$TAR_ARCHIVE_NAME" "${FILE_DIR[@]}" ; then
+    if tar -czf "$CURRENT_DATE_BACKUP_PATH"/"$TAR_ARCHIVE_NAME" "${FILE_DIR[@]}"; then
       echo "$BACKUP_TYPE: Files backup DONE!"
       echo ""
     else
@@ -277,7 +278,7 @@ function make_backup_files () {
 }
 
 ##### Backup rotation function - keep only N files #####
-function rotate_backups () {
+function rotate_backups() {
   if [ $# -ne 2 ]; then
     echo "Something wrong with parameters in backup-rotation functions."
     echo "There must be only 2 params: 1)num. of files to keep; 2)path of backup files; 3) backup type(Monthly/Weekly/Daily)"
@@ -289,20 +290,20 @@ function rotate_backups () {
   BACKUP_TYPE=$2
   BACKUP_PATH_TYPE=$BACKUP_PATH/"$BACKUP_TYPE"
   COUNTER=0
-  IFS=$'\n' # adding posibilty to see file with spaces in name
+  IFS=$'\n'     # adding posibilty to see file with spaces in name
   set -o noglob # adding posibilty to see file with spaces in name
   echo "Starting - $BACKUP_TYPE - Backups rotation..."
   for file in $(ls -t "$BACKUP_PATH_TYPE"); do
     if [ $COUNTER -lt "$NUMBER_OF_FILES_TO_KEEP" ]; then
-       ((COUNTER++))
-       continue
+      ((COUNTER++))
+      continue
     fi
     if rm -vrf "${BACKUP_PATH_TYPE:?}"/"$file"; then
       echo "Deleting old file ($file) in logs dir..."
     else
       echo "Skipping Log rotation..."
       echo ""
-    return
+      return
     fi
   done
   echo "$BACKUP_TYPE Backups rotation DONE!"
@@ -310,7 +311,7 @@ function rotate_backups () {
 }
 
 ##### Log Rotate function #####
-function rotate_logs () {
+function rotate_logs() {
   if [ $# -ne 2 ]; then
     echo "Something wrong with parameters in log rotation functions."
     echo "There must be only 2 params: 1)num. of files to keep(KEEP_LOGS_NUM); 2)path of log files."
@@ -320,7 +321,7 @@ function rotate_logs () {
   NUMBER_OF_FILES_TO_KEEP=$1
   PATH_OF_LOGS=$2
   COUNTER=0
-  IFS=$'\n' # adding posibilty to see file with spaces in name
+  IFS=$'\n'     # adding posibilty to see file with spaces in name
   set -o noglob # adding posibilty to see file with spaces in name
   echo "Starting Logs rotation..."
   for file in $(ls -t "$PATH_OF_LOGS"); do
@@ -334,7 +335,7 @@ function rotate_logs () {
     else
       echo "Skipping Log rotation..."
       echo ""
-    return
+      return
     fi
   done
   echo "Log rotation DONE!"
@@ -348,7 +349,7 @@ if [ "$MYSQL_BACKUP" = "yes" ]; then
   fi
 
   if [ "$DoW" -eq 1 ]; then
-      make_backup_mysql Weekly
+    make_backup_mysql Weekly
   fi
 
   make_backup_mysql Daily
@@ -360,17 +361,17 @@ if [ "$FILES_BACKUP" = "yes" ]; then
   fi
 
   if [ "$DoW" -eq 1 ]; then
-      make_backup_files Weekly
+    make_backup_files Weekly
   fi
   make_backup_files Daily
 fi
 
 ##### Doing Backups Rotation #####
 if [ "$DoM" -eq 01 ]; then
-    rotate_backups $NUMBER_OF_MONTHLY_BACKUPS Monthly
+  rotate_backups $NUMBER_OF_MONTHLY_BACKUPS Monthly
 fi
 if [ "$DoW" -eq 1 ]; then
-    rotate_backups $NUMBER_OF_WEEKLY_BACKUPS Weekly
+  rotate_backups $NUMBER_OF_WEEKLY_BACKUPS Weekly
 fi
 rotate_backups $NUMBER_OF_DAILY_BACKUPS Daily
 
