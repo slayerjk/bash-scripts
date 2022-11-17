@@ -4,13 +4,14 @@
 
 ### Release: 19.09.2021
 ### Update 15.11.2022: +list of lookup dirs, +check dir exists, *cn_only search regexp extended
-### Update 17.11.2022: more accurate cn regexp(based on concrete IINs); *check birth date output
+### Update 17.11.2022: more accurate cn regexp(based on concrete IINs); *check birth date output; +count findings in file; +check for dirs array; +end script function
 
 ### !!! This is BASH script, so BASH must be installed.
 ### !!! For Solaris support "ggrep" util must be installed !!! ###
 ### !!! For Solaris support "gfind" util must be installed !!! ###
 ### !!! Script must be runnig under ROOT privileges ###
 ### !!! Remote share mount point must be in /etc/fstab(linux) / /etc/vfstab(solaris)
+### Search for IIN/BIN: Visa: 4667 20 (Electron/debit), 4899 92 (Classic/debit), 4899 93 (Gold/debit), 4899 88 (Business/debit), 4463 75 (Platinum/debit), 4463 73 (Gold/credit), 4224 40 (Virtuon), 4846 34 (Platinum Credit), 4628 18 Visa Infinite Debit, 4628 19 Visa Infinite Credit, 4535 71 Visa Business Credit;;; МС: 6776 79 (Maestro/debit), 5204 18 (Standart/credit), 5447 72 (Gold/credit), 5488 28 (Platinum/credit), 5252 44 - Black Edition, 5596 72 – World Elite, 5355 81 – World Debit, 5104 450 MCG, 5104 455 - World
 
 #Defining PATH for commands
 export PATH=$PATH:/usr/bin
@@ -34,7 +35,7 @@ REPORTS_MOUNT="/atmddk"
 REPORT_NAME=report_$(hostname)_$(date +%F).log
 
 # Location for Card numbers lookup
-LOOKUP_LOCATIONS=(/home /export/home /backup)
+LOOKUP_LOCATIONS=(/backup /home/authserv/authgate/log /home/way4u/appserver/applications/eGateway/log /opt/way4acs/Work/way4acs/log /home/way4u/appserver/applications/way4u-cbgate/webapps/way4u-cbgate/WEB-INF/runtime/log /home/way4u/appserver/applications/way4u-w4gate/webapps/way4u-w4gate/WEB-INF/runtime/log /home/way4u/appserver/applications/ts_gate/webapps/ts_gate/WEB-INF/log /home/way4u/appserver/applications/way4u-conv/webapps/way4u-conv/WEB-INF/logs /home/way4u/appserver/applications/way4acs/webapps/way4acs/WEB-INF/conf/log /opt/apache-servicemix-4.5.3/data/log/cap/v3 /home/way4u/nfs/sbd1 /home/way4u/nfs/sbd2 /home/way4u/nfs/sdc1 /home/way4u/nfs/sdc2 /home/way4u/nfs/way4space /home/way4u/nfs/map)
 
 # Exclude locations to search for Solaris/Linux
 if [ "$OS" = "Solaris" ]; then
@@ -46,8 +47,7 @@ else
 fi
 
 ### Card number lookup variables(Visa & Master Card)
-#REGEXP_IIN=
-REGEXP_CN="[^0-9]+[45][0-9]{3}[\s\-\.\/\|_\\]?[0-9]{4}[\s\-\.\/\|_\\]?[0-9]{4}[\s\-\.\/\|_\\]?[0-9]{4}"
+REGEXP_CN="[45][0-9]{3}[\s\-\.\/\|_\\]?[0-9]{4}[\s\-\.\/\|_\\]?[0-9]{4}[\s\-\.\/\|_\\]?[0-9]{4}"
 REGEXP_FULL="[45][0-9]{15}\s[a-zA-Z]{1,}(/|\\\\|_|-|\s)[a-zA-Z]{1,}\s[0-9]{2}(/|\\\\|_|-|\s)[0-9]{2}\s[0-9]{3}"
 # What option do you want to lookup:
 # "cn_only" to lookup CardNumber only
@@ -111,6 +111,32 @@ echo "Date is - $(date)"
 echo "#################################"
 echo ""
 
+### POST-Job Actions
+function end_script() {
+	ELAPSED_TIME=$((SECONDS - START_TIME))
+	echo ""
+	echo "End of Card Data lookup!"
+	echo "Elapsed time is - $ELAPSED_TIME seconds"
+	echo "################################"
+
+	# Copy report from /tmp to "$CURRENT_DATE_REPORT_DIR"
+	cp "$TEMP_REPORT" "$CURRENT_DATE_REPORT_DIR"
+
+	# Unmount REPORT_SHARE
+	if [ "$REMOTE_SHARE" = "yes" ]; then
+		if umount "$REPORTS_MOUNT"; then
+			echo "Unmounting REMOTE_SHARE - OK!"
+			rm -rf "$REPORTS_ROOT"
+		else
+			echo "Unmountig REMOTE_SHARE - FAILED, check logs."
+			exit 0
+
+		fi
+	fi
+
+	rm "$TEMP_REPORT"
+}
+
 ### Dir exists check up ###
 echo "Checking lookup dir existance..."
 LOOKUP_LOCATIONS_CHECKED=()
@@ -121,8 +147,14 @@ for dir in "${LOOKUP_LOCATIONS[@]}"; do
 		LOOKUP_LOCATIONS_CHECKED+=("$dir")
 	fi
 done
-echo "List of dirs to scan:"
-echo "${LOOKUP_LOCATIONS_CHECKED[@]}"
+if [ ${#LOOKUP_LOCATIONS_CHECKED[@]} -eq 0 ]
+then
+	echo "No Dirs to scan, exiting..."
+	end_script
+else
+	echo "List of dirs to scan:"
+	echo "${LOOKUP_LOCATIONS_CHECKED[@]}"
+fi
 
 ### Defining CN lookup function ###
 function card_data_lookup() {
@@ -239,25 +271,4 @@ case "$LOOKUP_OPTION" in
 	;;
 esac
 
-ELAPSED_TIME=$((SECONDS - START_TIME))
-echo ""
-echo "End of Card Data lookup!"
-echo "Elapsed time is - $ELAPSED_TIME seconds"
-echo "################################"
-
-# Copy report from /tmp to "$CURRENT_DATE_REPORT_DIR"
-cp "$TEMP_REPORT" "$CURRENT_DATE_REPORT_DIR"
-
-# Unmount REPORT_SHARE
-if [ "$REMOTE_SHARE" = "yes" ]; then
-	if umount "$REPORTS_MOUNT"; then
-		echo "Unmounting REMOTE_SHARE - OK!"
-		rm -rf "$REPORTS_ROOT"
-	else
-		echo "Unmountig REMOTE_SHARE - FAILED, check logs."
-		exit 0
-
-	fi
-fi
-
-rm "$TEMP_REPORT"
+end_script
