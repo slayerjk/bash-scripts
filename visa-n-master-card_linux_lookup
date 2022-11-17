@@ -3,7 +3,8 @@
 ### This is Visa/MasterCard Card Sensitive Data lookup script. ###
 
 ### Release: 19.09.2021
-### Update: 15.11.2022 (+list of lookup dirs, +check dir exists, *cn_only search regexp extended)
+### Update 15.11.2022: +list of lookup dirs, +check dir exists, *cn_only search regexp extended
+### Update 17.11.2022: more accurate cn regexp(based on concrete IINs); *check birth date output
 
 ### !!! This is BASH script, so BASH must be installed.
 ### !!! For Solaris support "ggrep" util must be installed !!! ###
@@ -44,15 +45,15 @@ else
 	EXCLUDE_LOCATIONS_LINUX=(-not -path "$REPORTS_MOUNT/*" -not -path '/boot/*' -not -path '/proc/*' -not -path '/bin/*' -not -path '/sbin/*' -not -path '/mnt/*' -not -path '/lib/*' -not -path '/lib64/*' -not -path '/sys/*' -not -path '/dev/*' -not -path '/run/*' -not -path '/usr/lib/*' -not -path '/usr/lib64/*' -not -path '/var/lib/*' -not -path '/tmp/*' -not -path '/var/ossec/queue/*')
 fi
 
-# Card number lookup variables(Visa & Master Card)
-#REGEXP_CN="[45][0-9]{3}(-|\s)[0-9]{4}(-|\s)[0-9]{4}(-|\s)[0-9]{4}"
-REGEXP_CN="[45][0-9]{3}[\s\-\.\/\|_\\]?[0-9]{4}[\s\-\.\/\|_\\]?[0-9]{4}[\s\-\.\/\|_\\]?[0-9]{4}"
+### Card number lookup variables(Visa & Master Card)
+#REGEXP_IIN=
+REGEXP_CN="[^0-9]+[45][0-9]{3}[\s\-\.\/\|_\\]?[0-9]{4}[\s\-\.\/\|_\\]?[0-9]{4}[\s\-\.\/\|_\\]?[0-9]{4}"
 REGEXP_FULL="[45][0-9]{15}\s[a-zA-Z]{1,}(/|\\\\|_|-|\s)[a-zA-Z]{1,}\s[0-9]{2}(/|\\\\|_|-|\s)[0-9]{2}\s[0-9]{3}"
 # What option do you want to lookup:
 # "cn_only" to lookup CardNumber only
 # "full" to lookup Full Card Data only
 # "both" to lookup Both options
-LOOKUP_OPTION="both"
+LOOKUP_OPTION="cn_only"
 
 #######################
 # DONT'T EDIT FURTHER #
@@ -144,13 +145,21 @@ function card_data_lookup() {
 	# Lookup for Visa/MasterCard
 
 	if [ "$OS" = "Solaris" ]; then
-
 		for dir in "${LOOKUP_LOCATIONS_CHECKED[@]}"; do
 			while read -r file; do
 				var=$(ggrep -nosEI "$REGEXP" "$file")
 				if [ -n "$var" ]; then
 					echo "$file"
-					echo "BIRTH DATE is: $(stat -c %w "$file")"
+					if [ "$(stat -c %w "$file")" == '-' ]; then
+						echo "NO BIRTH DATE, printing full stat:"
+						echo "-----"
+						stat "$file"
+						echo "-----"
+					else
+						echo "BIRTH DATE is: $(stat -c %w "$file")"
+					fi
+					echo "FOUND $(ggrep -nosEI "$REGEXP" "$file" | wc -l) evidences in this file:"
+					echo "---"
 					echo "$var"
 					echo ""
 					((COUNT_TOTAL++))
@@ -170,7 +179,16 @@ function card_data_lookup() {
 				var=$(grep -nosEI "$REGEXP" "$file")
 				if [ -n "$var" ]; then
 					echo "$file"
-					echo "BIRTH DATE is: $(stat -c %w "$file")"
+					if [ "$(stat -c %w "$file")" == '-' ]; then
+						echo "No BIRTH DATE, printing full stat:"
+						echo "-----"
+						stat "$file"
+						echo "-----"
+					else
+						echo "BIRTH DATE is: $(stat -c %w "$file")"
+					fi
+					echo "FOUND $(grep -nosEI "$REGEXP" "$file" | wc -l) evidences in this file:"
+					echo "---"
 					echo "$var"
 					echo ""
 					((COUNT_TOTAL++))
@@ -194,7 +212,7 @@ function card_data_lookup() {
 	else
 		if [ "$LOOKUP_ARG" = "cn_only" ]; then
 			echo "Card Numbers was found in $COUNT_TOTAL files!"
-			echo "----------------------------------------------"
+			echo "______________________________________________"
 			echo ""
 		elif [ "$LOOKUP_ARG" = "full" ]; then
 			echo "Full Card Data was found in $COUNT_TOTAL files!"
