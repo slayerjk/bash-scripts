@@ -11,7 +11,6 @@
 ### !!! For Solaris support "gfind" util must be installed !!! ###
 ### !!! Script must be runnig under ROOT privileges ###
 ### !!! Remote share mount point must be in /etc/fstab(linux) / /etc/vfstab(solaris)
-### Search for IIN/BIN: Visa: 4667 20 (Electron/debit), 4899 92 (Classic/debit), 4899 93 (Gold/debit), 4899 88 (Business/debit), 4463 75 (Platinum/debit), 4463 73 (Gold/credit), 4224 40 (Virtuon), 4846 34 (Platinum Credit), 4628 18 Visa Infinite Debit, 4628 19 Visa Infinite Credit, 4535 71 Visa Business Credit;;; МС: 6776 79 (Maestro/debit), 5204 18 (Standart/credit), 5447 72 (Gold/credit), 5488 28 (Platinum/credit), 5252 44 - Black Edition, 5596 72 – World Elite, 5355 81 – World Debit, 5104 450 MCG, 5104 455 - World
 
 #Defining PATH for commands
 export PATH=$PATH:/usr/bin
@@ -35,7 +34,7 @@ REPORTS_MOUNT="/atmddk"
 REPORT_NAME=report_$(hostname)_$(date +%F).log
 
 # Location for Card numbers lookup
-LOOKUP_LOCATIONS=(/backup /home/authserv/authgate/log /home/way4u/appserver/applications/eGateway/log /opt/way4acs/Work/way4acs/log /home/way4u/appserver/applications/way4u-cbgate/webapps/way4u-cbgate/WEB-INF/runtime/log /home/way4u/appserver/applications/way4u-w4gate/webapps/way4u-w4gate/WEB-INF/runtime/log /home/way4u/appserver/applications/ts_gate/webapps/ts_gate/WEB-INF/log /home/way4u/appserver/applications/way4u-conv/webapps/way4u-conv/WEB-INF/logs /home/way4u/appserver/applications/way4acs/webapps/way4acs/WEB-INF/conf/log /opt/apache-servicemix-4.5.3/data/log/cap/v3 /home/way4u/nfs/sbd1 /home/way4u/nfs/sbd2 /home/way4u/nfs/sdc1 /home/way4u/nfs/sdc2 /home/way4u/nfs/way4space /home/way4u/nfs/map)
+LOOKUP_LOCATIONS=(/backup /home)
 
 # Exclude locations to search for Solaris/Linux
 if [ "$OS" = "Solaris" ]; then
