@@ -3,6 +3,9 @@ echo "Enter your 'PHRASE' to search:"
 read -r PHRASE
 echo "Enter your absolute path to search in:"
 read -r LOCATION
+echo ""
+echo "Searching, wait..."
+echo ""
 
 while read -r file
 do
