@@ -3,3 +3,4 @@
 - **lockup-linux-users-by-inactivity-days**: bash script locks up Linux users by inactivity(days); with logging and log rotation; needs adminstrative privileges.
 - **log-lsof**: bash script to log(/tmp/log-lsof_<date>.log by default) lsof output for chosen pid/dir/both(check inside), works for 2min(default).
 - **search-phrase-in-files**: This bash script is for searching phrase in files and printing in result filename, line number and line, contain this phrase. It takes two user inputs: 1) phrase/word to search;  2) absolute path for your search dir(this includes all sub-folders(recursively)).
+- **ssl-make-request**: for generation of .csr and .key file. For generation script only asks for OU, CN, DNS(array) and IP(array)
