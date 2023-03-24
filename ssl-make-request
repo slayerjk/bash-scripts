@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-# For generation of .csr and .key file. 
-#For generation script only asks for OU, CN, DNS(array) and IP(array)
-
 ### Config temp write
 echo "[req]
 default_bits = 2048
@@ -15,7 +12,7 @@ distinguished_name = dn
 C=<YOUR COUNTRY>
 ST=<YOUR STATE>
 L=<YOUR CITY>
-O=<YOUR ORGANIZATION>" > config_temp
+O=<YOUR ORGANIZATION NAME>" > config_temp
 
 ### Check OU
 read -rp "Enter OU: " OU
@@ -41,71 +38,60 @@ subjectAltName = @alt_names
 
 [ alt_names ]" >> config_temp
 
-### Check DNS
-COUNT_DNS=1
-DNS_ARRAY=()
 
-read -rp "DNS.1 = $CN, press ENTER to accept OR enter NEW value: " CURRENT_DNS
-if [ -z "$CURRENT_DNS" ]; then
-    DNS_ARRAY+=("$CN")
-else
-    DNS_ARRAY+=("$CURRENT_DNS")
-fi
+### Check IP/DNS function
+function check_var_list() {
+    opt=$1
 
-ANOTHER_DNS=1
-while [ $ANOTHER_DNS -eq 1 ]
-do
-    read -rp "Do you need another DNS(y,N): " DNS_OPT
-    if [[ "$DNS_OPT" =~ ^("y"|"Y")$ ]]; then
-        ((COUNT_DNS++))
-        
-        read -rp "Enter DNS_$COUNT_DNS: " CURRENT_DNS
-        while [ -z "$CURRENT_DNS" ]
+    COUNT_VAR=1
+    VAR_ARRAY=()
+
+    if [ "$opt" = "dns" ]; then
+        VAR_NAME="DNS"
+        read -rp "$VAR_NAME.1 = $CN, press ENTER to accept OR enter NEW value: " CURRENT_VAR
+        if [ -z "$CURRENT_VAR" ]; then
+            VAR_ARRAY+=("$CN")
+        else
+            VAR_ARRAY+=("$CURRENT_VAR")
+        fi
+    elif [ "$opt" = "ip" ]; then
+        VAR_NAME="IP"
+        read -rp "Enter $VAR_NAME: " CURRENT_VAR
+        while [ -z "$CURRENT_VAR" ]
         do
-            read -rp "Enter not EMPTY DNS_$COUNT_DNS: " CURRENT_DNS
+            read -rp "Enter NOT EMPTY $VAR_NAME: " CURRENT_VAR
         done
-        DNS_ARRAY+=("$CURRENT_DNS")
-    else ANOTHER_DNS=0
+        VAR_ARRAY+=("$CURRENT_VAR")
     fi
-done
 
-for i in $(/usr/bin/seq 0 $(("$COUNT_DNS" - 1)))
-do
-    echo "DNS.$(("$i"+1)) = ${DNS_ARRAY[$i]}" >> config_temp
-done
+    ANOTHER_VAR=1
+    while [ $ANOTHER_VAR -eq 1 ]
+    do
+        read -rp "Do you need another $VAR_NAME(y,N): " OPT
+        if [[ "$OPT" =~ ^("y"|"Y")$ ]]; then
+            ((COUNT_VAR++))
+            
+            read -rp "Enter $VAR_NAME($COUNT_VAR): " CURRENT_VAR
+            while [ -z "$CURRENT_VAR" ]
+            do
+                read -rp "Enter not EMPTY $VAR_NAME($COUNT_VAR): " CURRENT_VAR
+            done
+            VAR_ARRAY+=("$CURRENT_VAR")
+        else ANOTHER_VAR=0
+        fi
+    done
+
+    for i in $(/usr/bin/seq 0 $(("$COUNT_VAR" - 1)))
+    do
+        echo "$VAR_NAME.$(("$i"+1)) = ${VAR_ARRAY[$i]}" >> config_temp
+    done
+}
+
+### Check DNS
+check_var_list dns
 
 ### Check IP
-COUNT_IP=1
-IP_ARRAY=()
-
-read -rp "Enter IP: " CURRENT_IP
-while [ -z "$CURRENT_IP" ]
-do
-    read -rp "Enter not EMPTY IP: " CURRENT_IP
-done
-IP_ARRAY+=("$CURRENT_IP")
-
-ANOTHER_IP=1
-while [ $ANOTHER_IP -eq 1 ]
-do
-    read -rp "Do you need another IP(y,N): " IP_OPT
-    if [[ "$IP_OPT" =~ ^("y"|"Y")$ ]]; then
-        ((COUNT_IP++))
-        
-        read -rp "Enter IP_$COUNT_IP: " CURRENT_IP
-        while [ -z "$CURRENT_IP" ]
-        do
-            read -rp "Enter not EMPTY IP_$COUNT_IP: " CURRENT_IP
-        done
-        IP_ARRAY+=("$CURRENT_IP")
-    else ANOTHER_IP=0
-    fi
-done
-
-for i in $(/usr/bin/seq 0 $(("$COUNT_IP" - 1)))
-do
-    echo "IP.$(("$i"+1)) = ${IP_ARRAY[$i]}" >> config_temp
-done
+check_var_list ip
 
 ### Create DIR
 echo "Creating dir for CN"
