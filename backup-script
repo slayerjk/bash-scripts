@@ -53,9 +53,8 @@ DB_DUMP_FILE=$HOST-$DB_NAME-$(date +%F).sql
 
 ### Backup files/dirs: "yes"/"no" ###
 FILES_BACKUP="yes"
-#File dir(s)
-#For several dirs use form with quotes: FILE_DIR=(/dir1 /dir2)
-FILE_DIR=(/etc /var/opt)
+#Dir(s) to backup
+DIRS_TO_BACKUP=(/etc /var/opt)
 #TAR filename for files archive, dont't touch .tar.gz
 TAR_ARCHIVE_NAME=$HOST-files_$(date +%F).tar.gz
 
@@ -256,7 +255,7 @@ function make_backup_files() {
       return
     fi
     echo "Making $BACKUP_TYPE Tar archive of files..."
-    if tar -czf "$CURRENT_DATE_BACKUP_PATH"/"$TAR_ARCHIVE_NAME" "${FILE_DIR[@]}"; then
+    if tar -czf "$CURRENT_DATE_BACKUP_PATH"/"$TAR_ARCHIVE_NAME" "${DIRS_TO_BACKUP[@]}"; then
       echo "$BACKUP_TYPE: Files backup DONE!"
       echo ""
     else
