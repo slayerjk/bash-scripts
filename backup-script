@@ -13,7 +13,7 @@ START_TIME=$SECONDS
 # WARNING: nfs-utils(for NFS mounting) & mysqldump(for mysql backup) must be installed
 
 ##### Define MYAPP & HOST names #####
-MYAPP="MYAPP"
+MYAPP="YOUR-APP-NAME-BACKUP"
 HOST=$(hostname)
 
 ##### Define Backup Locations Section #####
@@ -23,8 +23,8 @@ MOUNT_NFS="yes"
 # NFS Mount Point or Local Dir for Local Backups if MOUNT_NFS="no"
 BACKUP_MOUNT=/mnt
 # Change nfs ip and export path accordingly
-NFS_IP=<YOUR NFS SRV IP>
-NFS_EXPORT_PATH=/YOUR-NFS-EXPORT-PATH
+NFS_IP=<YOUR NFS IP>
+NFS_EXPORT_PATH=/YOUR_NFS_MOUNT
 ############################################
 
 ##### Logging Section(LOG_DIR must exists) #####
@@ -53,8 +53,9 @@ DB_DUMP_FILE=$HOST-$DB_NAME-$(date +%F).sql
 
 ### Backup files/dirs: "yes"/"no" ###
 FILES_BACKUP="yes"
-#Dir(s) to backup
-DIRS_TO_BACKUP=(/etc /var/opt)
+#File dir(s)
+#For several dirs use form with quotes: DIRS_TO_BACKUP=(/dir1 /dir2)
+DIRS_TO_BACKUP=(/etc /root/scripts)
 #TAR filename for files archive, dont't touch .tar.gz
 TAR_ARCHIVE_NAME=$HOST-files_$(date +%F).tar.gz
 
@@ -91,8 +92,19 @@ echo "Starting new backup job..."
 date
 echo ""
 echo "NFS mount set to: $MOUNT_NFS"
+echo ""
+
 echo "MySQL Backup is set to: $MYSQL_BACKUP"
+if [ "$MYSQL_BACKUP" = "yes" ]; then
+        echo "MYSQL DB to backup: $DB_NAME"
+fi
+echo ""
+
 echo "Files Backup is set to: $FILES_BACKUP"
+if [ "$FILES_BACKUP" = "yes" ]; then
+        echo "Dirs to backup:"
+        printf ' - %s\n' "${DIRS_TO_BACKUP[@]}"
+fi
 echo ""
 
 # Checking mount.nfs installed
