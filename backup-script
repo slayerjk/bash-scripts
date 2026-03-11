@@ -23,13 +23,13 @@ MOUNT_NFS="yes"
 # NFS Mount Point or Local Dir for Local Backups if MOUNT_NFS="no"
 BACKUP_MOUNT=/mnt
 # Change nfs ip and export path accordingly
-NFS_IP=1.1.1.1
+NFS_IP=<YOUR NFS SRV IP>
 NFS_EXPORT_PATH=/YOUR-NFS-EXPORT-PATH
 ############################################
 
 ##### Logging Section(LOG_DIR must exists) #####
 # WARNING: Change BACKUP_LOGS accordingly or leave it be
-LOG_DIR=/var/log/$MYAPP/BACKUP_LOGS
+LOG_DIR=/var/log/$MYAPP
 # Keep last <num> logs
 KEEP_LOGS_NUM=30
 # Change MYBACKUP_backup-script to accordingly;
