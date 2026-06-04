@@ -55,7 +55,7 @@ DB_DUMP_FILE=$HOST-$DB_NAME-$(date +%F).sql
 FILES_BACKUP="yes"
 #File dir(s)
 #For several dirs use form with quotes: DIRS_TO_BACKUP=(/dir1 /dir2)
-DIRS_TO_BACKUP=(/etc /root/scripts)
+DIRS_TO_BACKUP=(/etc /root/scripts /var/spool/cron)
 #TAR filename for files archive, dont't touch .tar.gz
 TAR_ARCHIVE_NAME=$HOST-files_$(date +%F).tar.gz
 
